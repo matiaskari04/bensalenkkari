@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0f0f0f">
+<!-- v2 -->
 <title>Bensalenkkari</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <style>
@@ -910,7 +911,7 @@ function renderPartHeader(info, rawPart) {
         + '<span class="pn-num">' + num + '</span>'
         + '<div class="pn-right"><span class="pn-brand">' + brand + '</span>'
         + qualBadge
-        + '<span class="pn-copy" onclick="copyNum('' + num + '')" title="Kopioi">⧉</span></div>'
+        + '<span class="pn-copy" onclick="copyNum(\'' + num + '\')" title="Kopioi">⧉</span></div>'
         + '</div>';
     }).join('');
     if (info.oem_note) {

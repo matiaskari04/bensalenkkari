@@ -945,10 +945,37 @@ function copyText(text) {
   navigator.clipboard.writeText(text).then(() => toast(t("copied")));
 }
 
+// ── localStorage car storage ──────────────────────────────────
+function getCars() {
+  try { return JSON.parse(localStorage.getItem('bensalenkkari_cars') || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveCars(cars) {
+  localStorage.setItem('bensalenkkari_cars', JSON.stringify(cars));
+}
+
+function upsertCar(car) {
+  const cars = getCars().filter(c => c.vin !== car.vin);
+  cars.unshift({...car, saved_at: Date.now()});
+  saveCars(cars.slice(0, 10));
+}
+
+function addRecentPart(vin, part) {
+  const cars = getCars();
+  const car = cars.find(c => c.vin === vin);
+  if (car) {
+    const parts = (car.recent_parts || []).filter(p => p !== part);
+    parts.unshift(part);
+    car.recent_parts = parts.slice(0, 5);
+    saveCars(cars);
+  }
+}
+
 // ── My Cars ────────────────────────────────────────────────────
-async function loadMyCars() {
+function loadMyCars() {
   try {
-    const cars = await fetch("/api/my-cars").then(r => r.json());
+    const cars = getCars();
     const el = document.getElementById("cars-list");
     if (!cars.length) {
       el.innerHTML = '<div class="cars-empty">No saved cars yet — look up a VIN below</div>';
@@ -966,8 +993,8 @@ async function loadMyCars() {
   } catch(e) {}
 }
 
-async function deleteCar(vin) {
-  await fetch("/api/delete-car", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({vin})});
+function deleteCar(vin) {
+  saveCars(getCars().filter(c => c.vin !== vin));
   loadMyCars();
 }
 
@@ -999,6 +1026,7 @@ async function doVinLookup() {
   try {
     const car = await api("/api/lookup-vin", {vin, country});
     currentCar = car;
+    upsertCar(car);
     showCarResult(car);
     loadMyCars();
   } catch(e) {
@@ -1104,6 +1132,7 @@ async function runPartLookup(part) {
     loading(true, t("getting_info"));
     const info = await api("/api/part-info", {part, car: currentCar});
     currentPartInfo = info;
+        if (currentCar?.vin) { addRecentPart(currentCar.vin, part); loadMyCars(); }
     showPartHeader(info, part);
 
     // Fetch rest in parallel
@@ -1302,11 +1331,9 @@ document.getElementById("btn-manual").addEventListener("click", () => {
   showCarResult(car);
 
   // Save to server
-  fetch("/api/save-car", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(car)
-  }).then(() => loadMyCars());
+  // Save to localStorage
+  upsertCar(car);
+  loadMyCars();
 });
 
 // ── Translations ──────────────────────────────────────────────

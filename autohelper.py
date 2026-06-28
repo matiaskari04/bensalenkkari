@@ -870,14 +870,13 @@ Respond with this exact JSON structure:
 {{
   "canonical_name": "Front Lower Left Ball Joint",
   "part_numbers": [
-    {{"number": "5084871", "brand": "Saab", "type": "OEM"}},
-    {{"number": "90537406", "brand": "GM", "type": "OEM"}},
-    {{"number": "ES80537", "brand": "Moog", "type": "Aftermarket"}},
-    {{"number": "11025", "brand": "Febi Bilstein", "type": "Aftermarket"}},
-    {{"number": "SB-8019", "brand": "TRW", "type": "Aftermarket"}},
-    {{"number": "QSJ3289S", "brand": "Quinton Hazell", "type": "Aftermarket"}}
+    {{"number": "5084871", "brand": "Saab", "type": "OEM", "quality": "Genuine OEM"}},
+    {{"number": "90537406", "brand": "GM", "type": "OEM", "quality": "OEM equivalent"}},
+    {{"number": "ES80537", "brand": "Moog", "type": "Aftermarket", "quality": "Premium"}},
+    {{"number": "11025", "brand": "Febi Bilstein", "type": "Aftermarket", "quality": "Good"}},
+    {{"number": "SB-8019", "brand": "TRW", "type": "Aftermarket", "quality": "Premium"}}
   ],
-  "oem_note": "5084871/90537406 are genuine OEM. Moog, Febi, TRW are quality aftermarket alternatives.",
+  "oem_note": "5084871/90537406 are genuine OEM. Moog and TRW are premium aftermarket. Febi is a good budget option.",
   "description": "Connects the control arm to the steering knuckle. Fails due to wear in the ball socket causing play and clunking.",
   "replacement_summary": "1. Safety first: engage parking brake, chock wheels, wear eye protection.\n2. Loosen wheel nuts while on ground.\n3. Jack up vehicle and support on axle stands at chassis jacking points.\n4. Remove wheel.\n5. [detailed steps specific to this part and car]\n...continue with all steps including torque specs",
   "difficulty": "Medium",
@@ -887,7 +886,7 @@ Respond with this exact JSON structure:
 }}
 
 Fill in the actual values for: {car_str} — {part}
-For part_numbers: include ALL numbers you know — genuine OEM first, then as many quality aftermarket brands as you can (Moog, Febi Bilstein, TRW, Lemförder, SKF, FAG, Meyle, Gates, Bosch, NGK, Delphi, Monroe, Sachs, etc). Aim for 4-8 entries total.
+For part_numbers: include ALL numbers you know — genuine OEM first, then quality aftermarket. For each entry include a "quality" field: "Genuine OEM", "OEM equivalent", "Premium" (Moog, TRW, Lemförder, SKF, Sachs, Monroe, Bosch, NGK, Gates), "Good" (Febi, Meyle, Delphi, FAG), or "Budget". Aim for 4-8 entries total.
 For replacement_summary: write a THOROUGH guide a beginner can follow. Include safety precautions, specific torque values in Nm (not ft-lbs), common mistakes to avoid, whether alignment is needed after, and any model-specific tips for this exact car. Minimum 10 detailed steps.
 Only include part numbers you are reasonably confident about."""
 

@@ -982,7 +982,6 @@ function loadSavedCar(car) {
 }
 
 // ── VIN Lookup ─────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
 document.getElementById("btn-lookup").addEventListener("click", doVinLookup);
 document.getElementById("vin-input").addEventListener("keydown", e => { if (e.key === "Enter") doVinLookup(); });
 
@@ -1340,7 +1339,6 @@ function toggleLang() {
 // ── Init ───────────────────────────────────────────────────────
 applyTranslations();
 loadMyCars();
-}); // end DOMContentLoaded
 </script>
 </body>
 </html>

@@ -1,1371 +1,875 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0f0f0f">
 <title>Bensalenkkari</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
-/* ── Tokens ─────────────────────────────────────────────────── */
 :root {
-  --bg:        #0f0f0f;
-  --surface:   #1a1a1a;
-  --surface2:  #242424;
-  --border:    #2e2e2e;
-  --amber:     #f59e0b;
-  --amber-dim: #b45309;
-  --amber-glow:rgba(245,158,11,.12);
-  --text:      #f0f0f0;
-  --text-2:    #a0a0a0;
-  --text-3:    #666;
-  --green:     #22c55e;
-  --red:       #ef4444;
-  --radius:    14px;
-  --radius-sm: 8px;
-  --shadow:    0 4px 24px rgba(0,0,0,.5);
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
+  --amber:#f59e0b; --amber-dim:#b45309; --amber-glow:rgba(245,158,11,.12);
+  --text:#f0f0f0; --text2:#a0a0a0; --text3:#666;
+  --green:#22c55e; --red:#ef4444;
+  --r:14px; --rs:8px;
 }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden}
+a{color:var(--amber);text-decoration:none}
+button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
+input,select{font-family:inherit}
+.app{max-width:600px;margin:0 auto;padding-bottom:80px}
 
-/* ── Reset ──────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Inter', system-ui, sans-serif;
-  min-height: 100dvh;
-  overflow-x: hidden;
-}
-a { color: var(--amber); text-decoration: none; }
-button { cursor: pointer; border: none; background: none; font-family: inherit; }
-input { font-family: inherit; }
+/* Header */
+.hdr{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px}
+.logo-text{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--amber)}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:-2px}
+.lang-btn{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:6px 12px;font-size:13px;color:var(--text2);font-weight:500}
 
-/* ── Layout ─────────────────────────────────────────────────── */
-.app { max-width: 600px; margin: 0 auto; padding: 0 0 100px; }
+/* Sections */
+.sec{padding:24px 20px 0}
+.sec-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
 
-/* ── Header ─────────────────────────────────────────────────── */
-.header {
-  position: sticky; top: 0; z-index: 100;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-  padding: 14px 20px;
-  display: flex; align-items: center; gap: 12px;
-}
-.logo { display: flex; align-items: center; gap: 10px; }
-.logo-icon { font-size: 22px; }
-.logo-text {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 18px; font-weight: 700;
-  color: var(--amber);
-  letter-spacing: -0.3px;
-}
-.logo-sub { font-size: 11px; color: var(--text-3); margin-top: -2px; }
+/* Cards scroll */
+.cars-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.cars-scroll::-webkit-scrollbar{display:none}
+.car-card{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;min-width:160px;cursor:pointer;transition:border-color .15s;position:relative}
+.car-card:hover,.car-card:active{border-color:var(--amber);background:var(--amber-glow)}
+.car-card-name{font-size:13px;font-weight:600}
+.car-card-detail{font-size:12px;color:var(--text2);margin-top:2px}
+.car-card-parts{font-size:11px;color:var(--text3);margin-top:4px}
+.car-card-del{position:absolute;top:8px;right:8px;color:var(--text3);font-size:18px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.car-card-del:hover{color:var(--red)}
+.empty-cars{color:var(--text3);font-size:13px;padding:8px 0}
 
-/* ── Sections ───────────────────────────────────────────────── */
-.section { padding: 24px 20px 0; }
-.section-title {
-  font-size: 11px; font-weight: 600;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 14px;
-}
+/* Block */
+.block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px}
 
-/* ── My Cars ─────────────────────────────────────────────────── */
-.cars-scroll {
-  display: flex; gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: none;
-}
-.cars-scroll::-webkit-scrollbar { display: none; }
-.car-card {
-  flex-shrink: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  min-width: 160px;
-  cursor: pointer;
-  transition: border-color .15s, background .15s;
-  position: relative;
-}
-.car-card:hover, .car-card:active { border-color: var(--amber); background: var(--amber-glow); }
-.car-card-make { font-size: 13px; font-weight: 600; color: var(--text); }
-.car-card-model { font-size: 12px; color: var(--text-2); margin-top: 2px; }
-.car-card-year { font-size: 11px; color: var(--amber); margin-top: 6px; }
-.car-card-parts { font-size: 11px; color: var(--text-3); margin-top: 4px; }
-.car-card-del {
-  position: absolute; top: 8px; right: 8px;
-  color: var(--text-3); font-size: 16px;
-  width: 24px; height: 24px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;
-}
-.car-card-del:hover { color: var(--red); background: rgba(239,68,68,.1); }
-.cars-empty { color: var(--text-3); font-size: 13px; padding: 8px 0; }
+/* Toggle */
+.mode-toggle{display:flex;gap:8px;margin-bottom:14px}
+.toggle-btn{flex:1;padding:8px 14px;border-radius:var(--rs);font-size:13px;font-weight:500;color:var(--text3);background:var(--surface2);border:1px solid var(--border);transition:all .15s}
+.toggle-btn.active{background:var(--amber-glow);border-color:var(--amber);color:var(--amber)}
 
-/* ── VIN Input ───────────────────────────────────────────────── */
-.vin-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 18px;
-}
-.input-row { display: flex; gap: 10px; margin-bottom: 12px; }
-.input-wrap { flex: 1; position: relative; }
-.input-wrap label {
-  display: block;
-  font-size: 11px; font-weight: 500;
-  color: var(--text-3);
-  margin-bottom: 6px;
-  text-transform: uppercase; letter-spacing: 0.8px;
-}
-.input-wrap input, .input-wrap select {
-  width: 100%;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-size: 15px;
-  padding: 11px 14px;
-  outline: none;
-  transition: border-color .15s;
-  -webkit-appearance: none;
-}
-.input-wrap input:focus, .input-wrap select:focus { border-color: var(--amber); }
-.input-wrap input::placeholder { color: var(--text-3); }
-.input-wrap select option { background: var(--surface2); }
-.btn-lookup {
-  width: 100%;
-  background: var(--amber);
-  color: #000;
-  font-size: 15px; font-weight: 600;
-  padding: 13px;
-  border-radius: var(--radius-sm);
-  transition: opacity .15s, transform .1s;
-  letter-spacing: 0.2px;
-}
-.btn-lookup:active { opacity: .85; transform: scale(.98); }
-.btn-lookup:disabled { opacity: .5; cursor: not-allowed; }
+/* Inputs */
+.row{display:flex;gap:10px;margin-bottom:12px}
+.field{flex:1}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+.field input,.field select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:15px;padding:11px 14px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus{border-color:var(--amber)}
+.field input::placeholder{color:var(--text3)}
+.field select option{background:var(--surface2)}
 
-/* ── Car Result ──────────────────────────────────────────────── */
-.car-result {
-  background: var(--surface);
-  border: 1px solid var(--amber);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  display: none;
-}
-.car-result.show { display: block; }
-.car-result-name {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 20px; font-weight: 700;
-  color: var(--text);
-}
-.car-result-detail { font-size: 13px; color: var(--text-2); margin-top: 4px; }
-.car-result-vin { font-size: 11px; color: var(--text-3); margin-top: 6px; font-family: monospace; }
-.confidence-badge {
-  display: inline-block;
-  font-size: 11px; font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 20px;
-  margin-top: 8px;
-}
-.confidence-high { background: rgba(34,197,94,.15); color: var(--green); }
-.confidence-low  { background: rgba(239,68,68,.15); color: var(--red); }
+/* Buttons */
+.btn-primary{width:100%;background:var(--amber);color:#000;font-size:15px;font-weight:600;padding:13px;border-radius:var(--rs);transition:opacity .15s}
+.btn-primary:active{opacity:.85}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
 
-/* ── Part Search ─────────────────────────────────────────────── */
-.part-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 18px;
-  display: none;
-}
-.part-block.show { display: block; }
-.part-input-row { display: flex; gap: 10px; }
-.part-input-row input {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-size: 15px;
-  padding: 11px 14px;
-  outline: none;
-  transition: border-color .15s;
-}
-.part-input-row input:focus { border-color: var(--amber); }
-.part-input-row input::placeholder { color: var(--text-3); }
-.btn-search {
-  background: var(--amber);
-  color: #000;
-  font-size: 22px;
-  width: 48px; height: 48px;
-  border-radius: var(--radius-sm);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: opacity .15s;
-}
-.btn-search:active { opacity: .8; }
-.clarify-prompt {
-  background: rgba(245,158,11,.1);
-  border: 1px solid var(--amber-dim);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  font-size: 13px;
-  color: var(--amber);
-  margin-top: 12px;
-  display: none;
-}
-.clarify-prompt.show { display: block; }
-.recent-parts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.recent-chip {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 5px 12px;
-  font-size: 12px; color: var(--text-2);
-  cursor: pointer;
-  transition: border-color .15s, color .15s;
-}
-.recent-chip:hover { border-color: var(--amber); color: var(--amber); }
+/* Car result */
+.car-result{background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:16px 18px;display:none}
+.car-result.show{display:block}
+.car-result-name{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700}
+.car-result-detail{font-size:13px;color:var(--text2);margin-top:4px}
+.car-extra{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-top:10px}
+.car-field-label{font-size:11px;color:var(--text3)}
+.car-field-value{font-size:13px;font-weight:500}
+.car-vin{font-size:11px;color:var(--text3);margin-top:8px;font-family:monospace}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-top:8px}
+.badge-high{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-low{background:rgba(239,68,68,.15);color:var(--red)}
 
-/* ── Toggle buttons ─────────────────────────────────────────── */
-.toggle-btn {
-  flex: 1;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 13px; font-weight: 500;
-  color: var(--text-3);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  transition: all .15s;
-}
-.toggle-btn.active {
-  background: var(--amber-glow);
-  border-color: var(--amber);
-  color: var(--amber);
-}
+/* Part search */
+.part-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;display:none}
+.part-block.show{display:block}
+.part-row{display:flex;gap:10px}
+.part-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:15px;padding:11px 14px;outline:none;transition:border-color .15s}
+.part-row input:focus{border-color:var(--amber)}
+.part-row input::placeholder{color:var(--text3)}
+.btn-search{background:var(--amber);color:#000;font-size:20px;width:48px;height:48px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.clarify{background:rgba(245,158,11,.1);border:1px solid var(--amber-dim);border-radius:var(--rs);padding:12px 14px;font-size:13px;color:var(--amber);margin-top:12px;display:none}
+.clarify.show{display:block}
+.recent-parts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.recent-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer;transition:border-color .15s}
+.recent-chip:hover{border-color:var(--amber);color:var(--amber)}
 
-/* ── Car extra fields ────────────────────────────────────────── */
-.car-field { font-size: 12px; }
-.car-field-label { color: var(--text-3); font-size: 11px; }
-.car-field-value { color: var(--text); font-weight: 500; }
+/* Loading */
+.loading-bar{height:3px;background:var(--border);border-radius:3px;overflow:hidden;margin:16px 0;display:none}
+.loading-bar.show{display:block}
+.loading-fill{height:100%;background:var(--amber);animation:ld 2s ease-in-out infinite}
+@keyframes ld{0%{width:0;opacity:1}80%{width:90%;opacity:1}100%{width:100%;opacity:0}}
+.loading-text{font-size:13px;color:var(--text3);text-align:center;padding:4px 0}
 
-/* ── Loading ─────────────────────────────────────────────────── */
-.loading-bar {
-  height: 3px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-  margin: 16px 0;
-  display: none;
-}
-.loading-bar.show { display: block; }
-.loading-bar-fill {
-  height: 100%;
-  background: var(--amber);
-  border-radius: 3px;
-  width: 0;
-  animation: load 2.5s ease-in-out infinite;
-}
-@keyframes load { 0%{width:0;opacity:1} 80%{width:90%;opacity:1} 100%{width:100%;opacity:0} }
-.loading-text { font-size: 13px; color: var(--text-3); text-align: center; padding: 8px 0; }
+/* Error */
+.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--rs);padding:12px 14px;font-size:13px;color:var(--red);margin-top:12px;display:none}
+.err.show{display:block}
 
-/* ── Results ─────────────────────────────────────────────────── */
-.results { display: none; }
-.results.show { display: block; }
+/* Results */
+.results{display:none}
+.results.show{display:block}
 
-.part-header {
-  padding: 20px 20px 0;
-}
-.part-hero {
-  display: flex; gap: 16px; align-items: flex-start;
-}
-.part-image {
-  width: 90px; height: 90px;
-  border-radius: var(--radius-sm);
-  object-fit: contain;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.part-image-placeholder {
-  width: 90px; height: 90px;
-  border-radius: var(--radius-sm);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px;
-}
-.part-title-block { flex: 1; }
-.part-name {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 22px; font-weight: 700;
-  line-height: 1.2;
-}
-.part-desc { font-size: 13px; color: var(--text-2); margin-top: 6px; line-height: 1.5; }
-.part-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-.meta-chip {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 4px 10px;
-  font-size: 12px; color: var(--text-2);
-}
-.meta-chip span { color: var(--text); font-weight: 500; }
+/* Part header */
+.part-hdr{padding:20px 20px 0}
+.part-hero{display:flex;gap:16px;align-items:flex-start}
+.part-img-wrap{width:90px;height:90px;border-radius:var(--rs);background:var(--surface2);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden}
+.part-img-wrap img{width:100%;height:100%;object-fit:contain}
+.part-name{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;line-height:1.2}
+.part-desc{font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5}
+.part-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.meta-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text2)}
+.meta-chip span{color:var(--text);font-weight:500}
 
-/* ── Part Numbers ────────────────────────────────────────────── */
-.part-numbers {
-  margin: 16px 20px 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-}
-.part-numbers-title { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600; }
-.pn-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
-.pn-row:last-child { border-bottom: none; }
-.pn-type {
-  font-size: 10px; font-weight: 600;
-  padding: 2px 7px; border-radius: 10px;
-  flex-shrink: 0;
-}
-.pn-type.oem { background: rgba(34,197,94,.15); color: var(--green); }
-.pn-type.aftermarket { background: rgba(245,158,11,.1); color: var(--amber); }
-.pn-number { font-size: 14px; font-weight: 600; font-family: monospace; flex: 1; }
-.pn-brand { font-size: 12px; color: var(--text-3); }
-.pn-copy {
-  font-size: 18px; color: var(--text-3); padding: 4px;
-  border-radius: 6px; cursor: pointer;
-}
-.pn-copy:hover { color: var(--amber); }
+/* Part numbers */
+.pn-block{margin:16px 20px 0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.pn-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:600}
+.pn-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
+.pn-row:last-child{border-bottom:none}
+.pn-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;flex-shrink:0}
+.pn-oem{background:rgba(34,197,94,.15);color:var(--green)}
+.pn-am{background:rgba(245,158,11,.1);color:var(--amber)}
+.pn-num{font-size:14px;font-weight:600;font-family:monospace;flex:1}
+.pn-brand{font-size:12px;color:var(--text3)}
+.pn-copy{font-size:18px;color:var(--text3);padding:4px;border-radius:6px;cursor:pointer}
+.pn-copy:hover{color:var(--amber)}
 
-/* ── Tabs ────────────────────────────────────────────────────── */
-.tabs-wrap {
-  position: sticky; top: 57px; z-index: 90;
-  background: var(--bg);
-  padding: 0 20px;
-  border-bottom: 1px solid var(--border);
-}
-.tabs {
-  display: flex; gap: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.tabs::-webkit-scrollbar { display: none; }
-.tab-btn {
-  flex-shrink: 0;
-  padding: 14px 16px;
-  font-size: 13px; font-weight: 500;
-  color: var(--text-3);
-  border-bottom: 2px solid transparent;
-  transition: color .15s, border-color .15s;
-  white-space: nowrap;
-}
-.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
-.tab-panel { display: none; padding: 20px; }
-.tab-panel.active { display: block; }
+/* Tabs */
+.tabs-wrap{position:sticky;top:57px;z-index:90;background:var(--bg);padding:0 20px;border-bottom:1px solid var(--border)}
+.tabs{display:flex;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{flex-shrink:0;padding:14px 16px;font-size:13px;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap}
+.tab-btn.active{color:var(--amber);border-bottom-color:var(--amber)}
+.tab-panel{display:none;padding:20px}
+.tab-panel.active{display:block}
 
-/* ── Guide tab ───────────────────────────────────────────────── */
-.guide-step {
-  display: flex; gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-}
-.guide-step:last-child { border-bottom: none; }
-.step-num {
-  width: 28px; height: 28px;
-  background: var(--amber-glow);
-  border: 1px solid var(--amber-dim);
-  border-radius: 50%;
-  color: var(--amber);
-  font-size: 13px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-.step-text { font-size: 14px; line-height: 1.6; color: var(--text); }
-.step-sub { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+/* Guide */
+.tools-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:14px 16px;margin-bottom:20px;display:none}
+.tools-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:600}
+.tools-list{display:flex;flex-wrap:wrap;gap:8px}
+.tool-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text2)}
+.guide-step{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.guide-step:last-child{border-bottom:none}
+.step-num{width:28px;height:28px;background:var(--amber-glow);border:1px solid var(--amber-dim);border-radius:50%;color:var(--amber);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:14px;line-height:1.6}
 
-.tools-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 14px 16px;
-  margin-bottom: 20px;
-}
-.tools-box-title { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600; }
-.tools-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.tool-chip {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 4px 10px;
-  font-size: 12px; color: var(--text-2);
-}
+/* Prices */
+.price-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;text-decoration:none;transition:border-color .15s}
+.price-card:hover,.price-card:active{border-color:var(--amber)}
+.price-card.best{border-color:var(--amber);background:var(--amber-glow)}
+.price-shop{flex:1}
+.price-shop-name{font-size:14px;font-weight:600}
+.price-ship{font-size:12px;color:var(--text3);margin-top:2px}
+.price-part{font-size:12px;color:var(--text2);margin-top:2px}
+.price-amt{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--amber);white-space:nowrap}
+.price-amt.muted{font-size:13px;color:var(--text3)}
+.best-badge{font-size:10px;font-weight:600;background:var(--amber);color:#000;padding:2px 6px;border-radius:10px;margin-left:6px;vertical-align:middle}
 
-/* ── Prices tab ──────────────────────────────────────────────── */
-.price-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 10px;
-  display: flex; align-items: center; gap: 12px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: border-color .15s;
-}
-.price-card:hover, .price-card:active { border-color: var(--amber); }
-.price-card.best { border-color: var(--amber); background: var(--amber-glow); }
-.price-shop { flex: 1; }
-.price-shop-name { font-size: 14px; font-weight: 600; color: var(--text); }
-.price-shop-part { font-size: 12px; color: var(--text-2); margin-top: 2px; }
-.price-shipping { font-size: 12px; color: var(--text-3); margin-top: 2px; }
-.price-amount {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 18px; font-weight: 700;
-  color: var(--amber);
-  white-space: nowrap;
-}
-.price-amount.no-price { font-size: 13px; color: var(--text-3); }
-.best-badge {
-  font-size: 10px; font-weight: 600;
-  background: var(--amber);
-  color: #000;
-  padding: 2px 6px;
-  border-radius: 10px;
-  margin-left: 6px;
-  vertical-align: middle;
-}
+/* Videos */
+.video-card{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);text-decoration:none}
+.video-card:last-child{border-bottom:none}
+.video-thumb{width:80px;height:52px;background:var(--surface2);border-radius:var(--rs);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
+.video-thumb img{width:100%;height:100%;object-fit:cover}
+.video-title{font-size:14px;color:var(--text);line-height:1.4}
 
-/* ── Videos tab ──────────────────────────────────────────────── */
-.video-card {
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  text-decoration: none;
-}
-.video-card:last-child { border-bottom: none; }
-.video-thumb {
-  width: 80px; height: 52px;
-  background: var(--surface2);
-  border-radius: var(--radius-sm);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-.video-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.video-title { font-size: 14px; color: var(--text); line-height: 1.4; }
-.video-channel { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+/* Diagrams */
+.diagram-img{width:100%;border-radius:var(--rs);margin-bottom:12px;display:block;background:var(--surface2)}
+.diagram-link{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;margin-bottom:10px;text-decoration:none;color:var(--text);font-size:14px;transition:border-color .15s}
+.diagram-link:hover{border-color:var(--amber)}
 
-/* ── Diagrams tab ────────────────────────────────────────────── */
-.diagram-img {
-  width: 100%;
-  border-radius: var(--radius-sm);
-  margin-bottom: 12px;
-  background: var(--surface2);
-  display: block;
-}
-.diagram-link {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  text-decoration: none;
-  color: var(--text);
-  font-size: 14px;
-  transition: border-color .15s;
-}
-.diagram-link:hover { border-color: var(--amber); }
-.diagram-link-icon { font-size: 20px; }
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:14px}
+.empty-icon{font-size:36px;margin-bottom:10px}
 
-/* ── Empty / error states ────────────────────────────────────── */
-.empty-state { text-align: center; padding: 40px 20px; color: var(--text-3); font-size: 14px; }
-.empty-icon { font-size: 36px; margin-bottom: 10px; }
-.error-box {
-  background: rgba(239,68,68,.1);
-  border: 1px solid rgba(239,68,68,.3);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  font-size: 13px;
-  color: var(--red);
-  margin: 12px 20px;
-  display: none;
-}
-.error-box.show { display: block; }
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 18px;font-size:13px;z-index:999;transition:transform .25s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
 
-/* ── Toast ───────────────────────────────────────────────────── */
-.toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 18px;
-  font-size: 13px; color: var(--text);
-  z-index: 999;
-  transition: transform .25s ease;
-  white-space: nowrap;
-}
-.toast.show { transform: translateX(-50%) translateY(0); }
-
-/* ── Spinner ─────────────────────────────────────────────────── */
-.spinner {
-  width: 20px; height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--amber);
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-  display: inline-block; vertical-align: middle;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 380px) {
-  .part-image, .part-image-placeholder { width: 72px; height: 72px; }
-  .part-name { font-size: 19px; }
-}
+@media(max-width:380px){.part-img-wrap{width:72px;height:72px}.part-name{font-size:19px}}
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- Header -->
-  <header class="header">
-    <div class="logo">
-      <span class="logo-icon">🔧</span>
-      <div>
-        <div class="logo-text">Bensalenkkari</div>
-        <div class="logo-sub" id="logo-sub" data-i18n="logo_sub">Auto parts lookup</div>
+<header class="hdr">
+  <div>
+    <div class="logo-text">Bensalenkkari 🔧</div>
+    <div class="logo-sub" id="logo-sub">Varaosahaku</div>
+  </div>
+  <button class="lang-btn" onclick="toggleLang()">🇬🇧 EN</button>
+</header>
+
+<!-- My Cars -->
+<section class="sec">
+  <div class="sec-title" id="lbl-mycars">Autoni</div>
+  <div class="cars-scroll" id="cars-list">
+    <div class="empty-cars" id="lbl-nocars">Ei tallennettuja autoja — hae VIN-koodilla</div>
+  </div>
+</section>
+
+<!-- Lookup -->
+<section class="sec">
+  <div class="sec-title" id="lbl-lookup">Ajoneuvon haku</div>
+  <div class="block">
+    <div class="mode-toggle">
+      <button class="toggle-btn active" id="btn-vin-mode" onclick="setMode('vin')" id="lbl-vinlookup">VIN-haku</button>
+      <button class="toggle-btn" id="btn-man-mode" onclick="setMode('manual')" id="lbl-manual">Syötä manuaalisesti</button>
+    </div>
+
+    <!-- VIN mode -->
+    <div id="mode-vin">
+      <div class="row">
+        <div class="field" style="flex:2">
+          <label id="lbl-vin">VIN-koodi</label>
+          <input id="vin-input" type="text" placeholder="YS3EB59A..." maxlength="17" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <div class="field" style="flex:1">
+          <label id="lbl-region">Alue</label>
+          <select id="country-sel">
+            <option value="FI">🇫🇮 FI</option>
+            <option value="SE">🇸🇪 SE</option>
+            <option value="NO">🇳🇴 NO</option>
+            <option value="DE">🇩🇪 DE</option>
+            <option value="GB">🇬🇧 GB</option>
+            <option value="US">🇺🇸 US</option>
+            <option value="EE">🇪🇪 EE</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" id="btn-lookup">Hae ajoneuvo</button>
+    </div>
+
+    <!-- Manual mode -->
+    <div id="mode-manual" style="display:none">
+      <div class="row">
+        <div class="field"><label id="lbl-make">Merkki</label><input id="m-make" placeholder="esim. Saab"></div>
+        <div class="field"><label id="lbl-model">Malli</label><input id="m-model" placeholder="esim. 9-5"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label id="lbl-year">Vuosi</label><input id="m-year" type="number" placeholder="2007"></div>
+        <div class="field"><label id="lbl-engine">Moottori</label><input id="m-engine" placeholder="esim. 2.3T"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label id="lbl-fuel">Polttoaine</label>
+          <select id="m-fuel">
+            <option value="">Valitse...</option>
+            <option value="Petrol">Bensiini</option>
+            <option value="Diesel">Diesel</option>
+            <option value="Electric">Sähkö</option>
+            <option value="Hybrid">Hybridi</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="lbl-trans">Vaihteisto</label>
+          <select id="m-trans">
+            <option value="">Valitse...</option>
+            <option value="Manual">Manuaali</option>
+            <option value="Automatic">Automaatti</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label id="lbl-body">Korimalli</label>
+          <select id="m-body">
+            <option value="">Valitse...</option>
+            <option value="Sedan">Sedan</option>
+            <option value="Estate/Wagon">Farmari</option>
+            <option value="Hatchback">Hatchback</option>
+            <option value="SUV">SUV</option>
+            <option value="Coupe">Coupe</option>
+            <option value="Convertible">Avoauto</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="lbl-region2">Alue</label>
+          <select id="m-country">
+            <option value="FI">🇫🇮 FI</option>
+            <option value="SE">🇸🇪 SE</option>
+            <option value="NO">🇳🇴 NO</option>
+            <option value="DE">🇩🇪 DE</option>
+            <option value="GB">🇬🇧 GB</option>
+            <option value="US">🇺🇸 US</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" id="btn-manual">Tallenna auto</button>
+    </div>
+  </div>
+  <div class="err" id="vin-err"></div>
+</section>
+
+<!-- Car result -->
+<section class="sec">
+  <div class="car-result" id="car-result">
+    <div class="car-result-name" id="car-name"></div>
+    <div class="car-result-detail" id="car-detail"></div>
+    <div class="car-extra" id="car-extra"></div>
+    <div class="car-vin" id="car-vin"></div>
+    <span class="badge" id="car-badge"></span>
+  </div>
+</section>
+
+<!-- Part search -->
+<section class="sec">
+  <div class="part-block" id="part-block">
+    <div class="sec-title" id="lbl-searchpart" style="margin-bottom:12px">Hae varaosa</div>
+    <div class="part-row">
+      <input id="part-input" placeholder="esim. etujarrupalat, laturi...">
+      <button class="btn-search" id="btn-search">🔍</button>
+    </div>
+    <div class="clarify" id="clarify"></div>
+    <div class="recent-parts" id="recent-parts"></div>
+  </div>
+</section>
+
+<!-- Loading -->
+<div style="padding:0 20px">
+  <div class="loading-bar" id="loading-bar"><div class="loading-fill"></div></div>
+  <div class="loading-text" id="loading-text"></div>
+</div>
+
+<!-- Results -->
+<div class="results" id="results">
+  <div class="part-hdr">
+    <div class="part-hero">
+      <div class="part-img-wrap" id="part-img">🔩</div>
+      <div style="flex:1">
+        <div class="part-name" id="res-name"></div>
+        <div class="part-desc" id="res-desc"></div>
+        <div class="part-meta" id="res-meta"></div>
       </div>
     </div>
-    <button id="lang-toggle" onclick="toggleLang()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:13px;color:var(--text-2);font-weight:500">🇬🇧 EN</button>
-  </header>
-
-  <!-- My Cars -->
-  <section class="section" id="my-cars-section">
-    <div class="section-title" data-i18n="my_cars">My Cars</div>
-    <div class="cars-scroll" id="cars-list">
-      <div class="cars-empty"><div class="cars-empty" data-i18n="cars_empty">No saved cars yet — look up a VIN below</div></div>
-    </div>
-  </section>
-
-  <!-- VIN Lookup -->
-  <section class="section">
-    <div class="section-title" data-i18n="vehicle_lookup">Vehicle Lookup</div>
-    <div class="vin-block">
-      <!-- Toggle -->
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <button class="toggle-btn active" id="toggle-vin" onclick="switchMode('vin')" data-i18n="vin_lookup">VIN lookup</button>
-        <button class="toggle-btn" id="toggle-manual" onclick="switchMode('manual')" data-i18n="enter_manually">Enter manually</button>
-      </div>
-
-      <!-- VIN mode -->
-      <div id="mode-vin">
-        <div class="input-row">
-          <div class="input-wrap" style="flex:2">
-            <label data-i18n="vin_code">VIN Code</label>
-            <input type="text" id="vin-input" placeholder="YS3EB59A..." maxlength="17" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
-          </div>
-          <div class="input-wrap" style="flex:1">
-            <label data-i18n="region">Region</label>
-            <select id="country-select">
-              <option value="FI">🇫🇮 FI</option>
-              <option value="SE">🇸🇪 SE</option>
-              <option value="NO">🇳🇴 NO</option>
-              <option value="DE">🇩🇪 DE</option>
-              <option value="GB">🇬🇧 GB</option>
-              <option value="US">🇺🇸 US</option>
-              <option value="EE">🇪🇪 EE</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn-lookup" id="btn-lookup" data-i18n="btn_lookup">Look up vehicle</button>
-      </div>
-
-      <!-- Manual mode -->
-      <div id="mode-manual" style="display:none">
-        <div class="input-row">
-          <div class="input-wrap"><label data-i18n="make">Make</label><input type="text" id="m-make" placeholder="e.g. Saab"></div>
-          <div class="input-wrap"><label data-i18n="model">Model</label><input type="text" id="m-model" placeholder="e.g. 9-5"></div>
-        </div>
-        <div class="input-row">
-          <div class="input-wrap"><label data-i18n="year">Year</label><input type="number" id="m-year" placeholder="2007" min="1900" max="2030"></div>
-          <div class="input-wrap"><label data-i18n="engine">Engine</label><input type="text" id="m-engine" placeholder="e.g. 2.3T"></div>
-        </div>
-        <div class="input-row">
-          <div class="input-wrap">
-            <label data-i18n="fuel">Fuel</label>
-            <select id="m-fuel">
-              <option value="" data-i18n="select">Select...</option>
-              <option value="Petrol">Petrol</option>
-              <option value="Diesel">Diesel</option>
-              <option value="Electric">Electric</option>
-              <option value="Hybrid">Hybrid</option>
-              <option value="LPG">LPG</option>
-            </select>
-          </div>
-          <div class="input-wrap">
-            <label data-i18n="transmission">Transmission</label>
-            <select id="m-trans">
-              <option value="">Select...</option>
-              <option value="Manual">Manual</option>
-              <option value="Automatic">Automatic</option>
-            </select>
-          </div>
-        </div>
-        <div class="input-row">
-          <div class="input-wrap">
-            <label data-i18n="body">Body</label>
-            <select id="m-body">
-              <option value="">Select...</option>
-              <option value="Sedan">Sedan</option>
-              <option value="Estate/Wagon">Estate/Wagon</option>
-              <option value="Hatchback">Hatchback</option>
-              <option value="SUV">SUV</option>
-              <option value="Coupe">Coupe</option>
-              <option value="Convertible">Convertible</option>
-              <option value="Van">Van</option>
-              <option value="Pickup">Pickup</option>
-            </select>
-          </div>
-          <div class="input-wrap">
-            <label>Region</label>
-            <select id="country-select-manual">
-              <option value="FI">🇫🇮 FI</option>
-              <option value="SE">🇸🇪 SE</option>
-              <option value="NO">🇳🇴 NO</option>
-              <option value="DE">🇩🇪 DE</option>
-              <option value="GB">🇬🇧 GB</option>
-              <option value="US">🇺🇸 US</option>
-              <option value="EE">🇪🇪 EE</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn-lookup" id="btn-manual" data-i18n="save_car">Save car</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Car result -->
-  <section class="section">
-    <div class="car-result" id="car-result">
-      <div class="car-result-name" id="car-name">—</div>
-      <div class="car-result-detail" id="car-detail">—</div>
-      <div id="car-extra-fields" style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px"></div>
-      <div class="car-result-vin" id="car-vin-display" style="margin-top:8px">—</div>
-      <span class="confidence-badge" id="car-confidence"></span>
-    </div>
-    <div class="error-box" id="vin-error"></div>
-  </section>
-
-  <!-- Part search -->
-  <section class="section">
-    <div class="part-block" id="part-block">
-      <div class="section-title" style="margin-bottom:12px" data-i18n="search_part">Search Part</div>
-      <div class="part-input-row">
-        <input type="text" id="part-input" placeholder="e.g. front brake pads, alternator...">
-        <button class="btn-search" id="btn-search">🔍</button>
-      </div>
-      <div class="clarify-prompt" id="clarify-prompt"></div>
-      <div class="recent-parts" id="recent-parts"></div>
-    </div>
-  </section>
-
-  <!-- Loading -->
-  <div style="padding: 0 20px" id="loading-wrap">
-    <div class="loading-bar" id="loading-bar"><div class="loading-bar-fill"></div></div>
-    <div class="loading-text" id="loading-text"></div>
   </div>
 
-  <!-- Results -->
-  <div class="results" id="results">
+  <div class="pn-block" id="pn-block">
+    <div class="pn-title" id="lbl-partnums">Osanumerot</div>
+    <div id="pn-list"></div>
+  </div>
 
-    <!-- Part header -->
-    <div class="part-header">
-      <div class="part-hero">
-        <div class="part-image-placeholder" id="part-image-wrap">🔩</div>
-        <div class="part-title-block">
-          <div class="part-name" id="result-part-name">—</div>
-          <div class="part-desc" id="result-desc">—</div>
-          <div class="part-meta" id="result-meta"></div>
-        </div>
-      </div>
+  <div class="tabs-wrap">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="guide" id="lbl-tab-guide">Ohjeet</button>
+      <button class="tab-btn" data-tab="prices" id="lbl-tab-prices">Hinnat</button>
+      <button class="tab-btn" data-tab="videos" id="lbl-tab-videos">Videot</button>
+      <button class="tab-btn" data-tab="diagrams" id="lbl-tab-diagrams">Kaaviot</button>
     </div>
+  </div>
 
-    <!-- Part numbers -->
-    <div class="part-numbers" id="part-numbers-block">
-      <div class="part-numbers-title" data-i18n="part_numbers">Part Numbers</div>
-      <div id="part-numbers-list"></div>
+  <div class="tab-panel active" id="tab-guide">
+    <div class="tools-box" id="tools-box">
+      <div class="tools-title" id="lbl-tools">Tarvittavat työkalut</div>
+      <div class="tools-list" id="tools-list"></div>
     </div>
-
-    <!-- Tabs -->
-    <div class="tabs-wrap">
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="guide" data-i18n="tab_guide">Guide</button>
-        <button class="tab-btn" data-tab="prices" data-i18n="tab_prices">Prices</button>
-        <button class="tab-btn" data-tab="videos" data-i18n="tab_videos">Videos</button>
-        <button class="tab-btn" data-tab="diagrams" data-i18n="tab_diagrams">Diagrams</button>
-      </div>
-    </div>
-
-    <!-- Guide -->
-    <div class="tab-panel active" id="tab-guide">
-      <div class="tools-box" id="tools-box" style="display:none">
-        <div class="tools-box-title" data-i18n="tools_needed">Tools needed</div>
-        <div class="tools-list" id="tools-list"></div>
-      </div>
-      <div id="guide-steps"></div>
-    </div>
-
-    <!-- Prices -->
-    <div class="tab-panel" id="tab-prices">
-      <div id="prices-list"></div>
-    </div>
-
-    <!-- Videos -->
-    <div class="tab-panel" id="tab-videos">
-      <div id="videos-list"></div>
-    </div>
-
-    <!-- Diagrams -->
-    <div class="tab-panel" id="tab-diagrams">
-      <div id="diagrams-content"></div>
-    </div>
-
-  </div><!-- /results -->
+    <div id="guide-steps"></div>
+  </div>
+  <div class="tab-panel" id="tab-prices"><div id="prices-list"></div></div>
+  <div class="tab-panel" id="tab-videos"><div id="videos-list"></div></div>
+  <div class="tab-panel" id="tab-diagrams"><div id="diagrams-content"></div></div>
+</div>
 
 </div><!-- /app -->
-
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
-const TRANSLATIONS = {
-  en: {
-    logo_sub:         "Auto parts lookup",
-    my_cars:          "My Cars",
-    cars_empty:       "No saved cars yet — look up a VIN below",
-    vehicle_lookup:   "Vehicle Lookup",
-    vin_lookup:       "VIN lookup",
-    enter_manually:   "Enter manually",
-    vin_code:         "VIN Code",
-    region:           "Region",
-    btn_lookup:       t("btn_lookup"),
-    make:             "Make",
-    model:            "Model",
-    year:             "Year",
-    engine:           "Engine",
-    fuel:             "Fuel",
-    transmission:     "Transmission",
-    body:             "Body",
-    select:           "Select...",
-    save_car:         "Save car",
-    search_part:      "Search Part",
-    part_placeholder: "e.g. front brake pads, alternator...",
-    part_numbers:     "Part Numbers",
-    tab_guide:        "Guide",
-    tab_prices:       "Prices",
-    tab_videos:       "Videos",
-    tab_diagrams:     "Diagrams",
-    tools_needed:     "Tools needed",
-    diagram_search:   t("diagram_search"),
-    no_prices:        t("no_prices"),
-    no_videos:        t("no_videos"),
-    no_diagrams:      "No diagrams found",
-    cheapest:         t("cheapest"),
-    see_site:         t("see_site"),
-    searching_oem:    t("searching_oem"),
-    fetching_prices:  t("fetching_prices"),
-    getting_info:     t("getting_info"),
-    open_browser:     t("open_browser"),
-    make_required:    t("make_required"),
-    vin_required:     t("vin_required"),
-    vin_length:       t("vin_length"),
-    looking_up:       t("looking_up"),
-    copied:           t("copied"),
-    manually_entered: t("manually_entered"),
-    recent_label:     t("recent_label"),
-    confidence_manual:"MANUAL",
-    field_year:       "Year",
-    field_engine:     "Engine",
-    field_fuel:       "Fuel",
-    field_trans:      "Transmission",
-    field_body:       "Body",
-    field_color:      "Color",
-    field_muni:       "Municipality",
-    field_note:       "Note",
-    yt_channel:       t("yt_channel"),
-  },
+// ── Translations ──────────────────────────────────────────────
+var LANG = localStorage.getItem('blang') || 'fi';
+
+var TR = {
   fi: {
-    logo_sub:         "Varaosahaku",
-    my_cars:          "Autoni",
-    cars_empty:       "Ei tallennettuja autoja — hae VIN-koodilla alta",
-    vehicle_lookup:   "Ajoneuvon haku",
-    vin_lookup:       "VIN-haku",
-    enter_manually:   "Syötä manuaalisesti",
-    vin_code:         "VIN-koodi",
-    region:           "Alue",
-    btn_lookup:       "Hae ajoneuvo",
-    make:             "Merkki",
-    model:            "Malli",
-    year:             "Vuosi",
-    engine:           "Moottori",
-    fuel:             "Polttoaine",
-    transmission:     "Vaihteisto",
-    body:             "Korimalli",
-    select:           "Valitse...",
-    save_car:         "Tallenna auto",
-    search_part:      "Hae varaosa",
-    part_placeholder: "esim. etujarrupalat, laturi...",
-    part_numbers:     "Osanumerot",
-    tab_guide:        "Ohjeet",
-    tab_prices:       "Hinnat",
-    tab_videos:       "Videot",
-    tab_diagrams:     "Kaaviot",
-    tools_needed:     "Tarvittavat työkalut",
-    diagram_search:   "Hae lisää kaavioita Google Kuvista",
-    no_prices:        "Hintoja ei löydy",
-    no_videos:        "Videoita ei löydy",
-    no_diagrams:      "Kaavioita ei löydy",
-    cheapest:         "HALVIN",
-    see_site:         "Katso sivustolta",
-    searching_oem:    "Haetaan OEM-numeroita…",
-    fetching_prices:  "Haetaan hintoja, videoita ja kaavioita…",
-    getting_info:     "Haetaan osainfo ja OEM-numerot…",
-    open_browser:     "Avataan selaimessa…",
-    make_required:    "Merkki ja malli ovat pakollisia",
-    vin_required:     "Syötä VIN-koodi",
-    vin_length:       "VIN-koodin on oltava tasan 17 merkkiä",
-    looking_up:       "Haetaan…",
-    copied:           "Kopioitu!",
-    manually_entered: "Syötetty manuaalisesti",
-    recent_label:     "Viimeisimmät:",
-    confidence_manual:"MANUAALINEN",
-    field_year:       "Vuosi",
-    field_engine:     "Moottori",
-    field_fuel:       "Polttoaine",
-    field_trans:      "Vaihteisto",
-    field_body:       "Korimalli",
-    field_color:      "Väri",
-    field_muni:       "Kunta",
-    field_note:       "Huomio",
-    yt_channel:       t("yt_channel"),
+    'logo-sub':'Varaosahaku','lbl-mycars':'Autoni','lbl-nocars':'Ei tallennettuja autoja — hae VIN-koodilla',
+    'lbl-lookup':'Ajoneuvon haku','lbl-vinlookup':'VIN-haku','lbl-manual':'Syötä manuaalisesti',
+    'lbl-vin':'VIN-koodi','lbl-region':'Alue','lbl-region2':'Alue',
+    'btn-lookup':'Hae ajoneuvo','btn-manual':'Tallenna auto',
+    'lbl-make':'Merkki','lbl-model':'Malli','lbl-year':'Vuosi','lbl-engine':'Moottori',
+    'lbl-fuel':'Polttoaine','lbl-trans':'Vaihteisto','lbl-body':'Korimalli',
+    'lbl-searchpart':'Hae varaosa','part-placeholder':'esim. etujarrupalat, laturi...',
+    'lbl-partnums':'Osanumerot','lbl-tools':'Tarvittavat työkalut',
+    'lbl-tab-guide':'Ohjeet','lbl-tab-prices':'Hinnat','lbl-tab-videos':'Videot','lbl-tab-diagrams':'Kaaviot',
+    'loading-vin':'Haetaan ajoneuvoa...','loading-oem':'Haetaan OEM-numeroita...','loading-all':'Haetaan hintoja ja videoita...',
+    'err-vin-required':'Anna VIN-koodi','err-vin-length':'VIN-koodin on oltava 17 merkkiä',
+    'err-make-required':'Merkki ja malli ovat pakollisia',
+    'no-prices':'Hintoja ei löydy','no-videos':'Videoita ei löydy','no-diagrams':'Kaavioita ei löydy',
+    'cheapest':'HALVIN','see-site':'Katso sivustolta','copied':'Kopioitu!',
+    'manual-entry':'Syötetty manuaalisesti','recent-label':'Viimeisimmät:',
+    'diagram-search':'Hae lisää kaavioita Google Kuvista',
+    'field-year':'Vuosi','field-engine':'Moottori','field-fuel':'Polttoaine',
+    'field-trans':'Vaihteisto','field-body':'Korimalli','field-color':'Väri',
+    'field-muni':'Kunta','field-note':'Huomio',
+    'clarify-suffix':'(tai kirjoita molemmat puolet)',
+  },
+  en: {
+    'logo-sub':'Auto parts lookup','lbl-mycars':'My Cars','lbl-nocars':'No saved cars yet — look up a VIN below',
+    'lbl-lookup':'Vehicle Lookup','lbl-vinlookup':'VIN lookup','lbl-manual':'Enter manually',
+    'lbl-vin':'VIN Code','lbl-region':'Region','lbl-region2':'Region',
+    'btn-lookup':'Look up vehicle','btn-manual':'Save car',
+    'lbl-make':'Make','lbl-model':'Model','lbl-year':'Year','lbl-engine':'Engine',
+    'lbl-fuel':'Fuel','lbl-trans':'Transmission','lbl-body':'Body',
+    'lbl-searchpart':'Search Part','part-placeholder':'e.g. front brake pads, alternator...',
+    'lbl-partnums':'Part Numbers','lbl-tools':'Tools needed',
+    'lbl-tab-guide':'Guide','lbl-tab-prices':'Prices','lbl-tab-videos':'Videos','lbl-tab-diagrams':'Diagrams',
+    'loading-vin':'Looking up vehicle...','loading-oem':'Searching OEM numbers...','loading-all':'Fetching prices and videos...',
+    'err-vin-required':'Please enter a VIN code','err-vin-length':'VIN must be exactly 17 characters',
+    'err-make-required':'Make and model are required',
+    'no-prices':'No prices found','no-videos':'No videos found','no-diagrams':'No diagrams found',
+    'cheapest':'CHEAPEST','see-site':'See site','copied':'Copied!',
+    'manual-entry':'Manually entered','recent-label':'Recent:',
+    'diagram-search':'Search Google Images for more diagrams',
+    'field-year':'Year','field-engine':'Engine','field-fuel':'Fuel',
+    'field-trans':'Transmission','field-body':'Body','field-color':'Color',
+    'field-muni':'Municipality','field-note':'Note',
+    'clarify-suffix':'(or type "both sides")',
   }
 };
 
-let currentLang = localStorage.getItem("lang") || "fi";
+function t(key) { return (TR[LANG] || TR.fi)[key] || TR.fi[key] || key; }
 
-function t(key) {
-  return (TRANSLATIONS[currentLang] || TRANSLATIONS.en)[key] || TRANSLATIONS.en[key] || key;
-}
-
-// ── State ──────────────────────────────────────────────────────
-let currentCar = null;
-let currentPartInfo = null;
-let clarifyMode = null; // {ambiguous, question}
-
-// ── Ambiguous parts (mirrors Python dict) ──────────────────────
-const AMBIGUOUS = {
-  "brake pad":        "Which axle? Front or rear?",
-  "brake pads":       "Which axle? Front or rear?",
-  "brake disc":       "Which axle? Front or rear?",
-  "brake discs":      "Which axle? Front or rear?",
-  "brake rotor":      "Which axle? Front or rear?",
-  "shock absorber":   "Which corner? (front-left / front-right / rear-left / rear-right)",
-  "shock":            "Which corner? (front-left / front-right / rear-left / rear-right)",
-  "strut":            "Which corner? (front-left / front-right / rear-left / rear-right)",
-  "control arm":      "Which? (front-left / front-right / rear-left / rear-right, upper / lower)",
-  "ball joint":       "Which ball joint? Upper or lower? (Left/right helps with OEM number but type 'both sides' if replacing both)",
-  "wheel bearing":    "Which corner? (front-left / front-right / rear-left / rear-right)",
-  "tie rod":          "Which side + inner or outer?",
-  "caliper":          "Which corner? (front-left / front-right / rear-left / rear-right)",
-  "cv axle":          "Which side? Left or right?",
-  "cv joint":         "Which side? Left or right?",
-  "headlight":        "Which side? Left or right?",
-  "taillight":        "Which side? Left or right?",
-  "mirror":           "Which side? Left or right?",
-  "spring":           "Which corner? (front-left / front-right / rear-left / rear-right)",
-  "oxygen sensor":    "Which? Upstream (before cat) or downstream? Bank 1 or 2?",
-  "o2 sensor":        "Which? Upstream or downstream? Bank 1 or 2?",
-  "wiper blade":      "Which? Driver, passenger, or rear?",
-};
-
-const CLARIFY_WORDS = ["front","rear","left","right","upper","lower","inner","outer","driver","passenger","upstream","downstream"];
-
-function needsClarify(part) {
-  const low = part.toLowerCase();
-  if (CLARIFY_WORDS.some(w => low.includes(w))) return null;
-  for (const [key, q] of Object.entries(AMBIGUOUS)) {
-    if (low.includes(key)) return {key, q};
-  }
-  return null;
-}
-
-// ── Utils ──────────────────────────────────────────────────────
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 2200);
-}
-
-function loading(show, text = "") {
-  document.getElementById("loading-bar").classList.toggle("show", show);
-  document.getElementById("loading-text").textContent = text;
-}
-
-function showError(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.classList.toggle("show", !!msg);
-}
-
-async function api(endpoint, body) {
-  const r = await fetch(endpoint, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(body),
+function applyLang() {
+  Object.keys(TR.fi).forEach(function(key) {
+    var el = document.getElementById(key);
+    if (el) el.textContent = t(key);
   });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.error || "Request failed");
-  return data;
+  var pi = document.getElementById('part-input');
+  if (pi) pi.placeholder = t('part-placeholder');
+  var lb = document.getElementById('btn-vin-mode');
+  if (lb) lb.textContent = t('lbl-vinlookup');
+  var mb = document.getElementById('btn-man-mode');
+  if (mb) mb.textContent = t('lbl-manual');
+  document.getElementById('lang-toggle-btn') && (document.getElementById('lang-toggle-btn').textContent = LANG === 'fi' ? '🇬🇧 EN' : '🇫🇮 FI');
+  // update lang button
+  var btns = document.querySelectorAll('.lang-btn');
+  btns.forEach(function(b) { b.textContent = LANG === 'fi' ? '🇬🇧 EN' : '🇫🇮 FI'; });
 }
 
-function copyText(text) {
-  navigator.clipboard.writeText(text).then(() => toast(t("copied")));
+function toggleLang() {
+  LANG = LANG === 'fi' ? 'en' : 'fi';
+  localStorage.setItem('blang', LANG);
+  applyLang();
+  renderCars();
 }
 
-// ── localStorage car storage ──────────────────────────────────
+// ── localStorage cars ─────────────────────────────────────────
 function getCars() {
-  try { return JSON.parse(localStorage.getItem('bensalenkkari_cars') || '[]'); }
+  try { return JSON.parse(localStorage.getItem('bl_cars') || '[]'); }
   catch(e) { return []; }
 }
-
 function saveCars(cars) {
-  localStorage.setItem('bensalenkkari_cars', JSON.stringify(cars));
+  localStorage.setItem('bl_cars', JSON.stringify(cars));
 }
-
 function upsertCar(car) {
-  const cars = getCars().filter(c => c.vin !== car.vin);
-  cars.unshift({...car, saved_at: Date.now()});
+  var cars = getCars().filter(function(c) { return c.vin !== car.vin; });
+  cars.unshift(Object.assign({}, car, {saved_at: Date.now()}));
   saveCars(cars.slice(0, 10));
 }
-
+function deleteCarByVin(vin) {
+  saveCars(getCars().filter(function(c) { return c.vin !== vin; }));
+  renderCars();
+}
 function addRecentPart(vin, part) {
-  const cars = getCars();
-  const car = cars.find(c => c.vin === vin);
+  var cars = getCars();
+  var car = cars.find(function(c) { return c.vin === vin; });
   if (car) {
-    const parts = (car.recent_parts || []).filter(p => p !== part);
+    var parts = (car.recent_parts || []).filter(function(p) { return p !== part; });
     parts.unshift(part);
     car.recent_parts = parts.slice(0, 5);
     saveCars(cars);
   }
 }
 
-// ── My Cars ────────────────────────────────────────────────────
-function loadMyCars() {
-  try {
-    const cars = getCars();
-    const el = document.getElementById("cars-list");
-    if (!cars.length) {
-      el.innerHTML = '<div class="cars-empty">No saved cars yet — look up a VIN below</div>';
-      return;
-    }
-    el.innerHTML = cars.map(c => `
-      <div class="car-card" onclick="loadSavedCar(${JSON.stringify(c).replace(/"/g,'&quot;')})">
-        <button class="car-card-del" onclick="event.stopPropagation(); deleteCar('${c.vin}')" title="Remove">×</button>
-        <div class="car-card-make">${c.make || "Unknown"} ${c.model || ""}</div>
-        <div class="car-card-model">${[c.year, c.engine, c.fuel].filter(Boolean).join(" · ")}</div>
-        <div class="car-card-year">${[c.body, c.transmission].filter(Boolean).join(" · ")}</div>
-        ${c.recent_parts?.length ? `<div class="car-card-parts">🔧 ${c.recent_parts.slice(0,3).join(", ")}</div>` : ""}
-      </div>
-    `).join("");
-  } catch(e) {}
+function renderCars() {
+  var cars = getCars();
+  var el = document.getElementById('cars-list');
+  if (!cars.length) {
+    el.innerHTML = '<div class="empty-cars">' + t('lbl-nocars') + '</div>';
+    return;
+  }
+  el.innerHTML = cars.map(function(c) {
+    var detail = [c.year, c.engine, c.fuel].filter(Boolean).join(' · ');
+    var extra = [c.body, c.transmission].filter(Boolean).join(' · ');
+    var parts = c.recent_parts && c.recent_parts.length ? '<div class="car-card-parts">🔧 ' + c.recent_parts.slice(0,3).join(', ') + '</div>' : '';
+    return '<div class="car-card" onclick="loadCar(' + JSON.stringify(c).replace(/"/g,'&quot;') + ')">'
+      + '<button class="car-card-del" onclick="event.stopPropagation();deleteCarByVin(\'' + c.vin + '\')">×</button>'
+      + '<div class="car-card-name">' + (c.make||'?') + ' ' + (c.model||'') + '</div>'
+      + '<div class="car-card-detail">' + detail + '</div>'
+      + (extra ? '<div class="car-card-detail">' + extra + '</div>' : '')
+      + parts + '</div>';
+  }).join('');
 }
 
-function deleteCar(vin) {
-  saveCars(getCars().filter(c => c.vin !== vin));
-  loadMyCars();
+// ── State ─────────────────────────────────────────────────────
+var currentCar = null;
+var currentPartInfo = null;
+var clarifyPending = null;
+
+// ── Utils ─────────────────────────────────────────────────────
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 2000);
 }
 
-function loadSavedCar(car) {
-  document.getElementById("vin-input").value = car.vin || "";
-  document.getElementById("country-select").value = car.country || "FI";
-  currentCar = car;
-  showCarResult(car);
-  showError("vin-error", "");
-  // Show recent parts
-  showRecentParts(car.recent_parts || []);
+function setLoading(show, text) {
+  document.getElementById('loading-bar').classList.toggle('show', show);
+  document.getElementById('loading-text').textContent = text || '';
+}
+
+function showErr(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+}
+
+function api(path, body) {
+  return fetch(path, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(function(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    });
+  });
+}
+
+// ── Mode toggle ────────────────────────────────────────────────
+function setMode(mode) {
+  document.getElementById('mode-vin').style.display = mode === 'vin' ? '' : 'none';
+  document.getElementById('mode-manual').style.display = mode === 'manual' ? '' : 'none';
+  document.getElementById('btn-vin-mode').classList.toggle('active', mode === 'vin');
+  document.getElementById('btn-man-mode').classList.toggle('active', mode === 'manual');
 }
 
 // ── VIN Lookup ─────────────────────────────────────────────────
-document.getElementById("btn-lookup").addEventListener("click", doVinLookup);
-document.getElementById("vin-input").addEventListener("keydown", e => { if (e.key === "Enter") doVinLookup(); });
-
-async function doVinLookup() {
-  const vin = document.getElementById("vin-input").value.trim().toUpperCase();
-  const country = document.getElementById("country-select").value;
-  if (!vin) { showError("vin-error", t("vin_required")); return; }
-  if (vin.length !== 17) { showError("vin-error", t("vin_length")); return; }
-
-  showError("vin-error", "");
-  document.getElementById("btn-lookup").disabled = true;
-  document.getElementById("btn-lookup").textContent = t("looking_up");
-  loading(true, t("searching_oem"));
-
-  try {
-    const car = await api("/api/lookup-vin", {vin, country});
-    currentCar = car;
-    upsertCar(car);
-    showCarResult(car);
-    loadMyCars();
-  } catch(e) {
-    showError("vin-error", e.message);
-  } finally {
-    document.getElementById("btn-lookup").disabled = false;
-    document.getElementById("btn-lookup").textContent = t("btn_lookup");
-    loading(false);
-  }
+function doVinLookup() {
+  var vin = document.getElementById('vin-input').value.trim().toUpperCase();
+  var country = document.getElementById('country-sel').value;
+  if (!vin) { showErr('vin-err', t('err-vin-required')); return; }
+  if (vin.length !== 17) { showErr('vin-err', t('err-vin-length')); return; }
+  showErr('vin-err', '');
+  var btn = document.getElementById('btn-lookup');
+  btn.disabled = true;
+  btn.textContent = t('loading-vin');
+  setLoading(true, t('loading-vin'));
+  api('/api/lookup-vin', {vin: vin, country: country})
+    .then(function(car) {
+      currentCar = car;
+      upsertCar(car);
+      showCarResult(car);
+      renderCars();
+    })
+    .catch(function(e) { showErr('vin-err', e.message); })
+    .finally(function() {
+      btn.disabled = false;
+      btn.textContent = t('btn-lookup');
+      setLoading(false);
+    });
 }
 
+// ── Manual entry ───────────────────────────────────────────────
+function doManualSave() {
+  var make = document.getElementById('m-make').value.trim();
+  var model = document.getElementById('m-model').value.trim();
+  if (!make || !model) { showToast(t('err-make-required')); return; }
+  var car = {
+    make: make, model: model,
+    year: document.getElementById('m-year').value.trim(),
+    engine: document.getElementById('m-engine').value.trim(),
+    fuel: document.getElementById('m-fuel').value,
+    transmission: document.getElementById('m-trans').value,
+    body: document.getElementById('m-body').value,
+    country: document.getElementById('m-country').value,
+    vin: 'MANUAL-' + make.toUpperCase() + '-' + model.toUpperCase(),
+    confidence: 'manual'
+  };
+  currentCar = car;
+  upsertCar(car);
+  showCarResult(car);
+  renderCars();
+}
+
+// ── Show car result ────────────────────────────────────────────
 function showCarResult(car) {
-  const make  = car.make  || "Unknown";
-  const model = car.model || "";
-  const year  = car.year  || "";
-  const eng   = car.engine || "";
-  const fuel  = car.fuel  || "";
-
-  document.getElementById("car-name").textContent  = `${make} ${model}`;
-  document.getElementById("car-detail").textContent = [year, eng, fuel].filter(Boolean).join(" · ");
-
-  // Show all available car fields
-  const fields = [
-    {label: t("field_year"),  value: car.year},
-    {label: t("field_engine"),value: car.engine},
-    {label: t("field_fuel"),  value: car.fuel},
-    {label: t("field_trans"), value: car.transmission},
-    {label: t("field_body"),  value: car.body},
-    {label: t("field_color"), value: car.color},
-    {label: t("field_muni"),  value: car.municipality},
-    {label: t("field_note"),  value: car.note},
-  ].filter(f => f.value);
-  const extraEl = document.getElementById("car-extra-fields");
-  extraEl.innerHTML = fields.map(f => `
-    <div class="car-field">
-      <div class="car-field-label">${f.label}</div>
-      <div class="car-field-value">${f.value}</div>
-    </div>`).join("");
-
-  const vin = car.vin || "";
-  document.getElementById("car-vin-display").textContent = vin.startsWith("MANUAL") ? t("manually_entered") : `VIN: ${vin}`;
-
-  const conf = car.confidence || "low";
-  const badge = document.getElementById("car-confidence");
-  badge.textContent = conf === "manual" ? "MANUAL" : conf.toUpperCase();
-  badge.className = `confidence-badge confidence-${conf === "high" || conf === "manual" ? "high" : "low"}`;
-
-  document.getElementById("car-result").classList.add("show");
-  document.getElementById("part-block").classList.add("show");
-  document.getElementById("results").classList.remove("show");
-
+  document.getElementById('car-name').textContent = (car.make||'') + ' ' + (car.model||'');
+  document.getElementById('car-detail').textContent = [car.year, car.engine, car.fuel].filter(Boolean).join(' · ');
+  var fields = [
+    {k:'field-year',v:car.year},{k:'field-engine',v:car.engine},{k:'field-fuel',v:car.fuel},
+    {k:'field-trans',v:car.transmission},{k:'field-body',v:car.body},
+    {k:'field-color',v:car.color},{k:'field-muni',v:car.municipality},{k:'field-note',v:car.note}
+  ].filter(function(f){ return f.v; });
+  document.getElementById('car-extra').innerHTML = fields.map(function(f) {
+    return '<div><div class="car-field-label">' + t(f.k) + '</div><div class="car-field-value">' + f.v + '</div></div>';
+  }).join('');
+  var vin = car.vin || '';
+  document.getElementById('car-vin').textContent = vin.startsWith('MANUAL') ? t('manual-entry') : 'VIN: ' + vin;
+  var conf = car.confidence || 'low';
+  var badge = document.getElementById('car-badge');
+  badge.textContent = conf === 'manual' ? t('lbl-manual') : conf.toUpperCase();
+  badge.className = 'badge ' + (conf === 'high' || conf === 'manual' ? 'badge-high' : 'badge-low');
+  document.getElementById('car-result').classList.add('show');
+  document.getElementById('part-block').classList.add('show');
+  document.getElementById('results').classList.remove('show');
   showRecentParts(car.recent_parts || []);
 }
 
-function showRecentParts(parts) {
-  const el = document.getElementById("recent-parts");
-  if (!parts.length) { el.innerHTML = ""; return; }
-  el.innerHTML = "<span style='font-size:11px;color:var(--text-3);width:100%'>Recent:</span>" +
-    parts.map(p => `<span class="recent-chip" onclick="setPartAndSearch('${p}')">${p}</span>`).join("");
+function loadCar(car) {
+  currentCar = car;
+  document.getElementById('vin-input').value = car.vin || '';
+  document.getElementById('country-sel').value = car.country || 'FI';
+  showCarResult(car);
+  showErr('vin-err', '');
 }
 
-function setPartAndSearch(part) {
-  document.getElementById("part-input").value = part;
+function showRecentParts(parts) {
+  var el = document.getElementById('recent-parts');
+  if (!parts.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<span style="font-size:11px;color:var(--text3);width:100%">' + t('recent-label') + '</span>'
+    + parts.map(function(p) {
+        return '<span class="recent-chip" onclick="setPartSearch(\'' + p + '\')">' + p + '</span>';
+      }).join('');
+}
+
+function setPartSearch(part) {
+  document.getElementById('part-input').value = part;
   doPartSearch();
 }
 
-// ── Part Search ────────────────────────────────────────────────
-document.getElementById("btn-search").addEventListener("click", doPartSearch);
-document.getElementById("part-input").addEventListener("keydown", e => { if (e.key === "Enter") doPartSearch(); });
+// ── Ambiguous parts ────────────────────────────────────────────
+var AMBIGUOUS = {
+  'brake pad':'Kumpi akseli? Etu vai taka?',
+  'brake pads':'Kumpi akseli? Etu vai taka?',
+  'brake disc':'Kumpi akseli? Etu vai taka?',
+  'brake discs':'Kumpi akseli? Etu vai taka?',
+  'shock absorber':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'shock':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'strut':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'control arm':'Mikä? (etu-vasen / etu-oikea / taka-vasen / taka-oikea, ylä / ala)',
+  'ball joint':'Ylä- vai alahelaniviiin? ' + t('clarify-suffix'),
+  'wheel bearing':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'tie rod':'Kumpi puoli? Sisä vai ulko?',
+  'caliper':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'cv axle':'Kumpi puoli? Vasen vai oikea?',
+  'cv joint':'Kumpi puoli? Vasen vai oikea?',
+  'headlight':'Kumpi puoli? Vasen vai oikea?',
+  'taillight':'Kumpi puoli? Vasen vai oikea?',
+  'mirror':'Kumpi puoli? Vasen vai oikea?',
+  'spring':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'oxygen sensor':'Kumpi? Ennen katalysaattoria vai jälkeen? Pankki 1 vai 2?',
+  'o2 sensor':'Kumpi? Ennen katalysaattoria vai jälkeen?',
+  'wiper blade':'Kumpi? Kuljettaja, matkustaja vai taka?',
+};
+var CLARIFY_SKIP = ['front','rear','left','right','upper','lower','inner','outer','etu','taka','vasen','oikea','ylä','ala'];
 
-async function doPartSearch() {
-  if (!currentCar) { toast(t("vin_required")); return; }
-  let part = document.getElementById("part-input").value.trim();
+function needsClarify(part) {
+  var low = part.toLowerCase();
+  if (CLARIFY_SKIP.some(function(w){ return low.includes(w); })) return null;
+  for (var key in AMBIGUOUS) {
+    if (low.includes(key)) return {key: key, q: AMBIGUOUS[key]};
+  }
+  return null;
+}
+
+// ── Part Search ────────────────────────────────────────────────
+function doPartSearch() {
+  if (!currentCar) { showToast(t('err-vin-required')); return; }
+  var part = document.getElementById('part-input').value.trim();
   if (!part) return;
 
-  // Check if clarification needed
-  const cl = needsClarify(part);
-  if (cl && !clarifyMode) {
-    clarifyMode = cl;
-    const prompt = document.getElementById("clarify-prompt");
-    prompt.innerHTML = `<b>📍 ${cl.q}</b><br><small style="color:var(--text-3);margin-top:4px;display:block">Type your answer and press Search again</small>`;
-    prompt.classList.add("show");
-    document.getElementById("part-input").focus();
+  // Clarification check
+  var cl = needsClarify(part);
+  if (cl && !clarifyPending) {
+    clarifyPending = cl;
+    var el = document.getElementById('clarify');
+    el.innerHTML = '<strong>📍 ' + cl.q + '</strong><br><small style="color:var(--text3);margin-top:4px;display:block">Lisää tarkennus ja paina haku uudelleen</small>';
+    el.classList.add('show');
     return;
   }
-
-  // If clarifying, prepend clarification
-  if (clarifyMode) {
-    document.getElementById("clarify-prompt").classList.remove("show");
-    clarifyMode = null;
-  }
-
-  await runPartLookup(part);
+  clarifyPending = null;
+  document.getElementById('clarify').classList.remove('show');
+  runSearch(part);
 }
 
-async function runPartLookup(part) {
-  loading(true, t("searching_oem"));
-  document.getElementById("results").classList.remove("show");
-  document.getElementById("btn-search").disabled = true;
+function runSearch(part) {
+  setLoading(true, t('loading-oem'));
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('btn-search').disabled = true;
 
-  try {
-    // Fetch part info first (includes OEM numbers)
-    loading(true, t("getting_info"));
-    const info = await api("/api/part-info", {part, car: currentCar});
-    currentPartInfo = info;
-        if (currentCar?.vin) { addRecentPart(currentCar.vin, part); loadMyCars(); }
-    showPartHeader(info, part);
-
-    // Fetch rest in parallel
-    loading(true, t("fetching_prices"));
-    const [prices, videos, diagrams, partImg] = await Promise.allSettled([
-      api("/api/prices",    {part, car: currentCar, part_info: info}),
-      api("/api/youtube",   {part, car: currentCar}),
-      api("/api/diagrams",  {part, car: currentCar}),
-      api("/api/part-image",{part, car: currentCar}),
-    ]);
-
-    renderPrices(prices.status === "fulfilled" ? prices.value : []);
-    renderVideos(videos.status === "fulfilled" ? videos.value : []);
-    renderDiagrams(diagrams.status === "fulfilled" ? diagrams.value : {urls:[]});
-    if (partImg.status === "fulfilled" && partImg.value.url) {
-      setPartImage(partImg.value.url);
-    }
-
-    document.getElementById("results").classList.add("show");
-    document.getElementById("results").scrollIntoView({behavior: "smooth", block: "start"});
-
-  } catch(e) {
-    toast("Error: " + e.message);
-  } finally {
-    loading(false);
-    document.getElementById("btn-search").disabled = false;
-  }
+  // Step 1: get part info
+  api('/api/part-info', {part: part, car: currentCar})
+    .then(function(info) {
+      currentPartInfo = info;
+      renderPartHeader(info, part);
+      if (currentCar && currentCar.vin) {
+        addRecentPart(currentCar.vin, part);
+        renderCars();
+      }
+      setLoading(true, t('loading-all'));
+      // Step 2: parallel fetch
+      return Promise.all([
+        api('/api/prices', {part: part, car: currentCar, part_info: info}).catch(function(){ return []; }),
+        api('/api/youtube', {part: part, car: currentCar}).catch(function(){ return []; }),
+        api('/api/diagrams', {part: part, car: currentCar}).catch(function(){ return {urls:[]}; }),
+        api('/api/part-image', {part: part, car: currentCar}).catch(function(){ return {}; }),
+      ]);
+    })
+    .then(function(results) {
+      renderPrices(results[0]);
+      renderVideos(results[1]);
+      renderDiagrams(results[2], part);
+      if (results[3] && results[3].url) setPartImage(results[3].url);
+      document.getElementById('results').classList.add('show');
+      document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+    })
+    .catch(function(e) { showToast('Virhe: ' + e.message); })
+    .finally(function() {
+      setLoading(false);
+      document.getElementById('btn-search').disabled = false;
+    });
 }
 
-// ── Render Part Header ─────────────────────────────────────────
-function showPartHeader(info, rawPart) {
-  document.getElementById("result-part-name").textContent = info.canonical_name || rawPart;
-  document.getElementById("result-desc").textContent = info.description || "";
-
-  const meta = document.getElementById("result-meta");
-  meta.innerHTML = "";
-  if (info.difficulty) meta.innerHTML += `<span class="meta-chip">⚡ <span>${info.difficulty}</span></span>`;
-  if (info.avg_labor_hours) meta.innerHTML += `<span class="meta-chip">⏱ <span>${info.avg_labor_hours}</span></span>`;
+// ── Render functions ───────────────────────────────────────────
+function renderPartHeader(info, rawPart) {
+  document.getElementById('res-name').textContent = info.canonical_name || rawPart;
+  document.getElementById('res-desc').textContent = info.description || '';
+  var meta = '';
+  if (info.difficulty) meta += '<span class="meta-chip">⚡ <span>' + info.difficulty + '</span></span>';
+  if (info.avg_labor_hours) meta += '<span class="meta-chip">⏱ <span>' + info.avg_labor_hours + '</span></span>';
+  document.getElementById('res-meta').innerHTML = meta;
 
   // Part numbers
-  const nums = info.part_numbers || [];
-  const pnList = document.getElementById("part-numbers-list");
+  var nums = info.part_numbers || [];
+  var pnBlock = document.getElementById('pn-block');
   if (nums.length) {
-    pnList.innerHTML = nums.map(p => {
-      const num   = typeof p === "object" ? p.number : p;
-      const brand = typeof p === "object" ? (p.brand || "") : "";
-      const type  = typeof p === "object" ? (p.type  || "OEM") : "OEM";
-      const isOEM = type.toUpperCase().includes("OEM");
-      return `
-        <div class="pn-row">
-          <span class="pn-type ${isOEM ? 'oem' : 'aftermarket'}">${type}</span>
-          <span class="pn-number">${num}</span>
-          <span class="pn-brand">${brand}</span>
-          <span class="pn-copy" onclick="copyText('${num}')" title="Copy">⧉</span>
-        </div>`;
-    }).join("");
-    document.getElementById("part-numbers-block").style.display = "";
+    document.getElementById('pn-list').innerHTML = nums.map(function(p) {
+      var num = typeof p === 'object' ? p.number : p;
+      var brand = typeof p === 'object' ? (p.brand || '') : '';
+      var type = typeof p === 'object' ? (p.type || 'OEM') : 'OEM';
+      var isOEM = type.toUpperCase().includes('OEM');
+      return '<div class="pn-row">'
+        + '<span class="pn-type ' + (isOEM ? 'pn-oem' : 'pn-am') + '">' + type + '</span>'
+        + '<span class="pn-num">' + num + '</span>'
+        + '<span class="pn-brand">' + brand + '</span>'
+        + '<span class="pn-copy" onclick="copyNum(\'' + num + '\')" title="Kopioi">⧉</span>'
+        + '</div>';
+    }).join('');
+    pnBlock.style.display = '';
   } else {
-    document.getElementById("part-numbers-block").style.display = "none";
+    pnBlock.style.display = 'none';
   }
-
-  // Guide
-  const tools = info.tools_needed || [];
-  const toolsBox = document.getElementById("tools-box");
-  if (tools.length) {
-    document.getElementById("tools-list").innerHTML = tools.map(t => `<span class="tool-chip">${t}</span>`).join("");
-    toolsBox.style.display = "";
-  } else {
-    toolsBox.style.display = "none";
-  }
-
-  const guide = document.getElementById("guide-steps");
-  const steps = (info.replacement_summary || "").split("\n").filter(l => l.trim());
-  guide.innerHTML = steps.length ? steps.map(line => {
-    const m = line.match(/^(\d+)\.\s*(.*)/);
-    if (m) return `<div class="guide-step"><div class="step-num">${m[1]}</div><div class="step-text">${m[2]}</div></div>`;
-    const isSub = /^[a-z•\-\*]/.test(line.trim());
-    return `<div class="guide-step"><div class="step-num" style="visibility:hidden">·</div><div class="step-text step-sub">${line.trim()}</div></div>`;
-  }).join("") : '<div class="empty-state"><div class="empty-icon">📋</div>No guide available</div>';
 
   if (info.oem_note) {
-    guide.insertAdjacentHTML("beforeend", `<p style="font-size:12px;color:var(--text-3);margin-top:12px;padding:0 4px">${info.oem_note}</p>`);
+    document.getElementById('pn-list').innerHTML +=
+      '<p style="font-size:12px;color:var(--text3);margin-top:10px">' + info.oem_note + '</p>';
   }
+
+  // Tools
+  var tools = info.tools_needed || [];
+  var toolsBox = document.getElementById('tools-box');
+  if (tools.length) {
+    document.getElementById('tools-list').innerHTML = tools.map(function(t) {
+      return '<span class="tool-chip">' + t + '</span>';
+    }).join('');
+    toolsBox.style.display = '';
+  } else { toolsBox.style.display = 'none'; }
+
+  // Guide
+  var steps = (info.replacement_summary || '').split('\n').filter(function(l){ return l.trim(); });
+  document.getElementById('guide-steps').innerHTML = steps.length ? steps.map(function(line) {
+    var m = line.match(/^(\d+)\.\s*(.*)/);
+    if (m) return '<div class="guide-step"><div class="step-num">' + m[1] + '</div><div class="step-text">' + m[2] + '</div></div>';
+    return '<div class="guide-step"><div class="step-num" style="visibility:hidden">·</div><div class="step-text" style="color:var(--text2)">' + line.trim() + '</div></div>';
+  }).join('') : '<div class="empty"><div class="empty-icon">📋</div>Ei ohjetta saatavilla</div>';
+
+  // Reset to guide tab
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab==='guide'); });
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.toggle('active', p.id==='tab-guide'); });
 }
 
 function setPartImage(url) {
-  const wrap = document.getElementById("part-image-wrap");
-  wrap.outerHTML = `<img class="part-image" id="part-image-wrap" src="${url}" alt="Part" onerror="this.style.display='none'">`;
+  var wrap = document.getElementById('part-img');
+  var img = document.createElement('img');
+  img.src = url;
+  img.alt = 'Part';
+  img.onerror = function(){ wrap.innerHTML = '🔩'; };
+  wrap.innerHTML = '';
+  wrap.appendChild(img);
 }
 
-// ── Render Prices ──────────────────────────────────────────────
+function copyNum(num) {
+  navigator.clipboard.writeText(num).then(function(){ showToast(t('copied')); });
+}
+
 function renderPrices(prices) {
-  const el = document.getElementById("prices-list");
-  if (!prices.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💶</div>No prices found</div>';
+  var el = document.getElementById('prices-list');
+  if (!prices || !prices.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">💶</div>' + t('no-prices') + '</div>';
     return;
   }
-
-  const priced = prices.filter(p => p.price != null);
-  const cheapest = priced.length ? priced.reduce((a, b) => a.price < b.price ? a : b) : null;
-
-  el.innerHTML = prices.map(p => {
-    const isBest = cheapest && p.shop === cheapest.shop;
-    const priceStr = p.price != null ? `€${p.price.toFixed(2)}` : t("see_site");
-    const ship = p.shipping && p.shipping !== "—" ? p.shipping : "";
-    return `
-      <a href="${p.url || '#'}" target="_blank" rel="noopener" class="price-card ${isBest ? 'best' : ''}">
-        <div class="price-shop">
-          <div class="price-shop-name">${p.shop}${isBest ? '<span class="best-badge">CHEAPEST</span>' : ''}</div>
-          ${p.part ? `<div class="price-shop-part">${p.part}</div>` : ""}
-          ${ship ? `<div class="price-shipping">🚚 ${ship}</div>` : ""}
-        </div>
-        <div class="price-amount ${p.price == null ? 'no-price' : ''}">${priceStr}</div>
-      </a>`;
-  }).join("");
+  var priced = prices.filter(function(p){ return p.price != null; });
+  var cheapest = priced.length ? priced.reduce(function(a,b){ return a.price < b.price ? a : b; }) : null;
+  el.innerHTML = prices.map(function(p) {
+    var isBest = cheapest && p.shop === cheapest.shop;
+    var priceStr = p.price != null ? '€' + p.price.toFixed(2) : t('see-site');
+    var ship = p.shipping && p.shipping !== '—' ? '<div class="price-ship">🚚 ' + p.shipping + '</div>' : '';
+    var partName = p.part ? '<div class="price-part">' + p.part + '</div>' : '';
+    return '<a href="' + (p.url||'#') + '" target="_blank" rel="noopener" class="price-card' + (isBest?' best':'') + '">'
+      + '<div class="price-shop">'
+      + '<div class="price-shop-name">' + p.shop + (isBest ? '<span class="best-badge">' + t('cheapest') + '</span>' : '') + '</div>'
+      + partName + ship + '</div>'
+      + '<div class="price-amt' + (p.price==null?' muted':'') + '">' + priceStr + '</div>'
+      + '</a>';
+  }).join('');
 }
 
-// ── Render Videos ──────────────────────────────────────────────
 function renderVideos(videos) {
-  const el = document.getElementById("videos-list");
-  if (!videos.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">▶️</div>No videos found</div>';
+  var el = document.getElementById('videos-list');
+  if (!videos || !videos.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">▶️</div>' + t('no-videos') + '</div>';
     return;
   }
-  el.innerHTML = videos.map(v => {
-    const vidId = v.url?.match(/v=([^&]+)/)?.[1] || "";
-    const thumb = vidId ? `https://img.youtube.com/vi/${vidId}/mqdefault.jpg` : "";
-    return `
-      <a href="${v.url}" target="_blank" rel="noopener" class="video-card">
-        <div class="video-thumb">${thumb ? `<img src="${thumb}" alt="">` : "▶"}</div>
-        <div>
-          <div class="video-title">${v.title}</div>
-          <div class="video-channel">YouTube</div>
-        </div>
-      </a>`;
-  }).join("");
+  el.innerHTML = videos.map(function(v) {
+    var id = (v.url||'').match(/v=([^&]+)/);
+    var thumb = id ? 'https://img.youtube.com/vi/' + id[1] + '/mqdefault.jpg' : '';
+    return '<a href="' + (v.url||'#') + '" target="_blank" rel="noopener" class="video-card">'
+      + '<div class="video-thumb">' + (thumb ? '<img src="'+thumb+'" alt="">' : '▶') + '</div>'
+      + '<div><div class="video-title">' + v.title + '</div></div>'
+      + '</a>';
+  }).join('');
 }
 
-// ── Render Diagrams ────────────────────────────────────────────
-function renderDiagrams(data) {
-  const el = document.getElementById("diagrams-content");
-  const urls = data.urls || [];
-  const car = currentCar || {};
-  const part = document.getElementById("part-input").value;
-  const q = encodeURIComponent(`${car.make||""} ${car.model||""} ${part} exploded view diagram`);
-  const gLink = `https://www.google.com/search?tbm=isch&q=${q}`;
-
-  let html = urls.map(url => `<img class="diagram-img" src="${url}" alt="Diagram" onerror="this.style.display='none'">`).join("");
-  html += `
-    <a href="${gLink}" target="_blank" class="diagram-link">
-      <span class="diagram-link-icon">🖼</span>
-      Search Google Images for more diagrams
-    </a>`;
-  el.innerHTML = html;
+function renderDiagrams(data, part) {
+  var el = document.getElementById('diagrams-content');
+  var urls = (data && data.urls) || [];
+  var car = currentCar || {};
+  var q = encodeURIComponent((car.make||'') + ' ' + (car.model||'') + ' ' + part + ' exploded view diagram');
+  var gLink = 'https://www.google.com/search?tbm=isch&q=' + q;
+  el.innerHTML = urls.map(function(url) {
+    return '<img class="diagram-img" src="' + url + '" alt="Diagram" onerror="this.style.display=\'none\'">';
+  }).join('')
+  + '<a href="' + gLink + '" target="_blank" class="diagram-link">'
+  + '<span>🖼</span>' + t('diagram-search') + '</a>';
 }
 
 // ── Tabs ───────────────────────────────────────────────────────
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   });
 });
 
-// ── Mode toggle ───────────────────────────────────────────────
-function switchMode(mode) {
-  document.getElementById("mode-vin").style.display    = mode === "vin"    ? "" : "none";
-  document.getElementById("mode-manual").style.display = mode === "manual" ? "" : "none";
-  document.getElementById("toggle-vin").classList.toggle("active",    mode === "vin");
-  document.getElementById("toggle-manual").classList.toggle("active", mode === "manual");
-}
-
-// Manual save button
-document.getElementById("btn-manual").addEventListener("click", () => {
-  const make  = document.getElementById("m-make").value.trim();
-  const model = document.getElementById("m-model").value.trim();
-  const year  = document.getElementById("m-year").value.trim();
-  const engine= document.getElementById("m-engine").value.trim();
-  const fuel  = document.getElementById("m-fuel").value;
-  const trans = document.getElementById("m-trans").value;
-  const body  = document.getElementById("m-body").value;
-  const country = document.getElementById("country-select-manual").value;
-
-  if (!make || !model) { toast(t("make_required")); return; }
-
-  const car = {
-    make, model, year, engine, fuel,
-    transmission: trans, body, country,
-    vin: `MANUAL-${make}-${model}-${year}`.replace(/\s+/g,"-").toUpperCase(),
-    confidence: "manual",
-    note: t("manually_entered")
-  };
-  currentCar = car;
-  showCarResult(car);
-
-  // Save to server
-  // Save to localStorage
-  upsertCar(car);
-  loadMyCars();
-});
-
-// ── Translations ──────────────────────────────────────────────
-function applyTranslations() {
-  // Translate all data-i18n elements
-  document.querySelectorAll("[data-i18n]").forEach(el => {
-    const key = el.getAttribute("data-i18n");
-    const val = t(key);
-    if (val) el.textContent = val;
-  });
-  // Placeholder on part input
-  const pi = document.getElementById("part-input");
-  if (pi) pi.placeholder = t("part_placeholder");
-  // Lang button
-  const lb = document.getElementById("lang-toggle");
-  if (lb) lb.textContent = currentLang === "fi" ? "🇬🇧 EN" : "🇫🇮 FI";
-  // Cars empty state (may be dynamically set)
-  const ce = document.querySelector(".cars-empty");
-  if (ce) ce.textContent = t("cars_empty");
-}
-
-function toggleLang() {
-  currentLang = currentLang === "en" ? "fi" : "en";
-  localStorage.setItem("lang", currentLang);
-  applyTranslations();
-  // Re-render dynamic content that uses t()
-  loadMyCars();
-}
+// ── Event listeners ────────────────────────────────────────────
+document.getElementById('btn-lookup').addEventListener('click', doVinLookup);
+document.getElementById('vin-input').addEventListener('keydown', function(e){ if(e.key==='Enter') doVinLookup(); });
+document.getElementById('btn-search').addEventListener('click', doPartSearch);
+document.getElementById('part-input').addEventListener('keydown', function(e){ if(e.key==='Enter') doPartSearch(); });
+document.getElementById('btn-manual').addEventListener('click', doManualSave);
 
 // ── Init ───────────────────────────────────────────────────────
-applyTranslations();
-loadMyCars();
+applyLang();
+renderCars();
 </script>
 </body>
 </html>

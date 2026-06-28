@@ -435,6 +435,9 @@ input,select{font-family:inherit}
 <div class="toast" id="toast"></div>
 
 <script>
+// ── Helpers ───────────────────────────────────────────────────
+function hideEl(el) { if (el) el.style.display = 'none'; }
+
 // ── Translations ──────────────────────────────────────────────
 var LANG = localStorage.getItem('blang') || 'fi';
 
@@ -1046,7 +1049,7 @@ function renderDiagrams(data, part) {
     galleryHtml = '<div class="diagram-gallery">'
       + images.map(function(img, i) {
           return '<div class="diagram-thumb" onclick="openLightbox(' + i + ')">'
-            + '<img src="' + img.url + '" alt="" onerror="this.parentElement.style.display='none'">'
+            + '<img src="' + img.url + '" alt="" onerror="hideEl(this.parentElement)">'
             + '<div class="diagram-thumb-title">' + (img.title || 'Kaavio ' + (i+1)) + '</div>'
             + '</div>';
         }).join('')

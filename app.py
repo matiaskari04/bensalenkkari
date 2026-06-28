@@ -25,6 +25,15 @@ AMBIGUOUS_PARTS       = None   # resolved at request time
 
 app = Flask(__name__)
 
+@app.after_request
+def add_headers(response):
+    """Prevent browser and CDN caching of HTML to always serve fresh JS."""
+    if response.content_type and 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
 # ── My Cars — simple JSON file persistence ────────────────────────────────────
 CARS_FILE = os.path.join(os.path.dirname(__file__), "my_cars.json")
 
@@ -195,6 +204,26 @@ def api_delete_car():
     cars = [c for c in load_cars() if c.get("vin") != vin]
     save_cars(cars)
     return jsonify({"ok": True})
+
+@app.route("/manifest.json")
+def manifest():
+    return send_from_directory("static", "manifest.json",
+                               mimetype="application/manifest+json")
+
+@app.route("/sw.js")
+def service_worker():
+    resp = send_from_directory("static", "sw.js",
+                               mimetype="application/javascript")
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+@app.route("/icon-192.svg")
+def icon192():
+    return send_from_directory("static", "icon-192.svg", mimetype="image/svg+xml")
+
+@app.route("/icon-512.svg")
+def icon512():
+    return send_from_directory("static", "icon-512.svg", mimetype="image/svg+xml")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

@@ -4,7 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0f0f0f">
-<!-- v2 -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bensalenkkari">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.svg">
 <title>Bensalenkkari</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <style>
@@ -1077,6 +1082,13 @@ document.getElementById('vin-input').addEventListener('keydown', function(e){ if
 document.getElementById('btn-search').addEventListener('click', doPartSearch);
 document.getElementById('part-input').addEventListener('keydown', function(e){ if(e.key==='Enter') doPartSearch(); });
 document.getElementById('btn-manual').addEventListener('click', doManualSave);
+
+// ── Service Worker ────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function(e) {
+    console.log('SW registration failed:', e);
+  });
+}
 
 // ── Init ───────────────────────────────────────────────────────
 applyLang();

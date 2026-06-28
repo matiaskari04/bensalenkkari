@@ -1,0 +1,62 @@
+<svg width="192" height="192" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Bensalenkkari</title>
+<style>
+  .icon-bg { fill: #111318; }
+  .wrench-body { fill: #c8cdd6; }
+  .wrench-shine { fill: #e8ecf2; }
+  .wrench-shadow { fill: #8892a0; }
+  .wrench-dark { fill: #5a6272; }
+  .can-body { fill: #e8e2d0; }
+  .can-top { fill: #c8c2b0; }
+  .can-label { fill: #2a2a2a; }
+  .can-label-stripe { fill: #f59e0b; }
+  .can-nozzle { fill: #888; }
+  .can-ring { fill: #aaa; }
+  .can-shine { fill: #f5f0e8; opacity: 0.6; }
+  .amber-glow { fill: #f59e0b; opacity: 0.08; }
+</style>
+<rect width="680" height="680" rx="120" class="icon-bg"/>
+<ellipse cx="340" cy="420" rx="220" ry="160" class="amber-glow"/>
+<ellipse cx="340" cy="420" rx="160" ry="120" fill="#f59e0b" opacity="0.05"/>
+<rect x="420" y="220" width="110" height="330" rx="18" class="can-body"/>
+<path d="M420 250 Q420 220 440 215 L510 215 Q530 220 530 250Z" class="can-top"/>
+<ellipse cx="475" cy="550" rx="55" ry="12" fill="#b8b2a0"/>
+<rect x="420" y="540" width="110" height="18" rx="10" fill="#b8b2a0"/>
+<rect x="420" y="300" width="110" height="90" class="can-label-stripe"/>
+<rect x="420" y="270" width="110" height="32" class="can-label"/>
+<rect x="420" y="390" width="110" height="60" class="can-label"/>
+<rect x="420" y="302" width="110" height="3" fill="#c8820a"/>
+<rect x="420" y="385" width="110" height="3" fill="#c8820a"/>
+<rect x="420" y="448" width="110" height="3" fill="#333" opacity="0.4"/>
+<rect x="426" y="225" width="16" height="290" rx="8" class="can-shine"/>
+<rect x="455" y="188" width="40" height="30" rx="8" class="can-nozzle"/>
+<rect x="460" y="175" width="30" height="18" rx="6" fill="#777"/>
+<ellipse cx="475" cy="175" rx="8" ry="5" fill="#666"/>
+<rect x="485" y="170" width="22" height="8" rx="4" fill="#999"/>
+<circle cx="508" cy="174" r="4" fill="#666"/>
+<rect x="432" y="210" width="86" height="12" rx="6" class="can-ring"/>
+<rect x="435" y="213" width="80" height="6" rx="3" fill="#bbb"/>
+<g transform="rotate(-25, 280, 400)">
+<rect x="220" y="230" width="52" height="320" rx="12" class="wrench-body"/>
+<rect x="226" y="240" width="10" height="300" rx="5" class="wrench-shine"/>
+<rect x="254" y="240" width="12" height="300" rx="5" class="wrench-shadow"/>
+<rect x="243" y="240" width="6" height="300" rx="3" fill="#b0b8c4"/>
+<rect x="221" y="360" width="50" height="8" rx="2" fill="#a0a8b4" opacity="0.5"/>
+<rect x="221" y="378" width="50" height="8" rx="2" fill="#a0a8b4" opacity="0.5"/>
+<rect x="221" y="396" width="50" height="8" rx="2" fill="#a0a8b4" opacity="0.5"/>
+<rect x="221" y="414" width="50" height="8" rx="2" fill="#a0a8b4" opacity="0.5"/>
+<rect x="221" y="432" width="50" height="8" rx="2" fill="#a0a8b4" opacity="0.5"/>
+<path d="M196 230 L304 230 L304 185 Q304 155 280 145 Q264 138 246 140 Q226 142 210 155 Q196 168 196 185 Z" class="wrench-body"/>
+<path d="M215 175 L285 175 L285 230 L215 230 Z" class="icon-bg"/>
+<path d="M215 175 Q215 158 228 150 Q240 144 246 144 Q258 144 268 150 Q278 157 285 170 L285 175 L215 175 Z" class="wrench-dark"/>
+<path d="M200 185 Q200 165 212 155 Q216 152 220 150 L220 180 Q210 185 205 195 Z" class="wrench-shine" opacity="0.7"/>
+<rect x="215" y="226" width="70" height="8" rx="2" class="wrench-shadow"/>
+<rect x="215" y="175" width="12" height="55" rx="2" class="wrench-shadow"/>
+<rect x="285" y="175" width="12" height="55" rx="2" class="wrench-dark"/>
+<ellipse cx="246" cy="550" rx="26" ry="20" class="wrench-body"/>
+<ellipse cx="240" cy="548" rx="10" ry="8" class="wrench-shine"/>
+</g>
+<circle cx="580" cy="580" r="6" fill="#f59e0b" opacity="0.5"/>
+<circle cx="568" cy="592" r="4" fill="#f59e0b" opacity="0.3"/>
+<ellipse cx="360" cy="600" rx="200" ry="18" fill="#000" opacity="0.35"/>
+</svg>

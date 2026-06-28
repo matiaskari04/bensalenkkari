@@ -1,0 +1,35 @@
+{
+  "name": "Bensalenkkari",
+  "short_name": "Bensalenkkari",
+  "description": "Varaosahaku — löydä oikeat varaosat autollesi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "lang": "fi",
+  "categories": ["automotive", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Hae varaosa",
+      "short_name": "Haku",
+      "description": "Hae varaosia VIN-koodilla",
+      "url": "/"
+    }
+  ]
+}

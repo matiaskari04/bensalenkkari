@@ -1032,6 +1032,19 @@ def get_exploded_view_images(part: str, car: dict) -> list[dict]:
 
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
 
+# Amazon Associates affiliate tag — set via env var or paste here
+AMAZON_TAG = os.environ.get("AMAZON_TAG", "")  # e.g. "bensalenkkari-21"
+
+def _add_amazon_tag(url: str) -> str:
+    """Add affiliate tag to any Amazon URL."""
+    if not AMAZON_TAG or not url or "amazon." not in url:
+        return url
+    sep = "&" if "?" in url else "?"
+    # Don't double-add
+    if f"tag={AMAZON_TAG}" in url:
+        return url
+    return f"{url}{sep}tag={AMAZON_TAG}"
+
 COUNTRY_GOOGLE = {
     "FI": ("google.fi",   "EUR", "fi"),
     "SE": ("google.se",   "SEK", "sv"),
@@ -1213,12 +1226,15 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 except Exception:
                     pass
 
+            item_url = item.get("link", item.get("url", "#"))
+            if "amazon." in item_url.lower():
+                item_url = _add_amazon_tag(item_url)
             results.append({
                 "shop": source,
                 "part": item.get("title", "")[:60],
                 "price": price_num,
                 "currency": currency,
-                "url": item.get("link", item.get("url", "#")),
+                "url": item_url,
                 "shipping": _parse_shipping(item),
                 "note": "" if price_num else "See site",
             })
@@ -1243,7 +1259,7 @@ def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) ->
         {"shop": "AK24",             "price": None, "url": f"https://www.ak24.fi/fi/search?term={q}",                "note": "Katso sivustolta", "shipping": "3-5 days"},
         {"shop": "Trodo",            "price": None, "url": f"https://trodo.com/en/search?q={q}",                     "note": "Katso sivustolta", "shipping": "3-7 days"},
         {"shop": "Biltema",          "price": None, "url": f"https://www.biltema.fi/fi/search?query={q}",            "note": "Katso sivustolta", "shipping": "1-3 days"},
-        {"shop": "Amazon.de",        "price": None, "url": f"https://www.amazon.de/s?k={q}",                         "note": "Katso sivustolta", "shipping": "1-3 days"},
+        {"shop": "Amazon.de",        "price": None, "url": _add_amazon_tag(f"https://www.amazon.de/s?k={q}"),        "note": "Katso sivustolta", "shipping": "1-3 days"},
         {"shop": "eBay.de",          "price": None, "url": f"https://www.ebay.de/sch/i.html?_nkw={q}",              "note": "Katso sivustolta"},
         {"shop": "EuroCarParts",     "price": None, "url": f"https://www.eurocarparts.com/ecp/c/?q={q}",             "note": "Katso sivustolta", "shipping": "1-3 days"},
         {"shop": "Oscaro",           "price": None, "url": f"https://www.oscaro.com/search#/?q={q}",                 "note": "Katso sivustolta"},

@@ -228,24 +228,36 @@ def _call_groq(prompt: str, system: str, max_tokens: int) -> str:
 
 
 def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
-    """Call the configured AI provider. Falls back to the other if key is missing."""
-    try:
-        if AI_PROVIDER == "anthropic":
-            if ANTHROPIC_API_KEY:
-                return _call_anthropic(prompt, system, max_tokens)
-            elif GROQ_API_KEY:
-                print(f"  {Fore.YELLOW}⚠  No Anthropic key — falling back to Groq{Style.RESET_ALL}")
-                return _call_groq(prompt, system, max_tokens)
-            return "[No API key set. Set ANTHROPIC_API_KEY or GROQ_API_KEY]"
-        else:  # groq (default)
-            if GROQ_API_KEY:
-                return _call_groq(prompt, system, max_tokens)
-            elif ANTHROPIC_API_KEY:
-                print(f"  {Fore.YELLOW}⚠  No Groq key — falling back to Anthropic{Style.RESET_ALL}")
-                return _call_anthropic(prompt, system, max_tokens)
+    """
+    Call the configured AI provider with automatic fallback.
+    Primary: as configured (default Groq). On any error, retries with the other provider.
+    """
+    if AI_PROVIDER == "anthropic":
+        primary_fn   = (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic")
+        secondary_fn = (_call_groq,      GROQ_API_KEY,      "Groq")
+    else:
+        primary_fn   = (_call_groq,      GROQ_API_KEY,      "Groq")
+        secondary_fn = (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic")
+
+    fn, key, name = primary_fn
+    if not key:
+        # Primary has no key — go straight to secondary
+        fn, key, name = secondary_fn
+        if not key:
             return "[No API key set. Set GROQ_API_KEY or ANTHROPIC_API_KEY]"
-    except Exception as e:
-        return f"[AI error: {e}]"
+
+    try:
+        return fn(prompt, system, max_tokens)
+    except Exception as primary_err:
+        # Primary failed — try secondary
+        fb_fn, fb_key, fb_name = secondary_fn
+        if fb_key and fb_fn != fn:
+            print(f"  {Fore.YELLOW}⚠  {name} failed ({str(primary_err)[:60]}) — trying {fb_name}...{Style.RESET_ALL}")
+            try:
+                return fb_fn(prompt, system, max_tokens)
+            except Exception as secondary_err:
+                return f"[AI error: both providers failed. {name}: {primary_err} | {fb_name}: {secondary_err}]"
+        return f"[AI error: {primary_err}]"
 
 
 # Keep 'claude' as an alias so the rest of the code stays unchanged
@@ -962,46 +974,30 @@ def search_youtube(query: str) -> list[dict]:
 
 # ─── Exploded view / diagram search ──────────────────────────────────────────
 def get_exploded_view_images(part: str, car: dict) -> list[str]:
-    """Scrape actual image URLs from Google Images and DuckDuckGo for the part diagram."""
+    """Fetch exploded view diagram image URLs via Serper Images API."""
+    serper_key = os.environ.get("SERPER_API_KEY", "")
     car_str = f"{car.get('make','')} {car.get('model','')} {car.get('year','')}".strip()
-    queries = [
-        f"{car_str} {part} exploded view diagram",
-        f"{car_str} {part} parts diagram",
-    ]
+    query = f"{car_str} {part} exploded view diagram"
     image_urls = []
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
-    for query in queries:
-        if len(image_urls) >= 3:
-            break
+
+    if serper_key:
         try:
-            # DuckDuckGo image search (more scrape-friendly than Google)
-            encoded = urllib.parse.quote_plus(query)
-            r = requests.get(
-                f"https://duckduckgo.com/?q={encoded}&iax=images&ia=images",
-                headers=headers, timeout=10
+            r = requests.post(
+                "https://google.serper.dev/images",
+                headers={"X-API-KEY": serper_key, "Content-Type": "application/json"},
+                json={"q": query, "num": 6},
+                timeout=10,
             )
-            # Extract vqd token needed for the API call
-            vqd = re.search(r"vqd=([0-9-]+)", r.text)
-            if not vqd:
-                vqd = re.search(r'vqd=([\d-]+)', r.text)
-                token = vqd.group(1) if vqd else None
-            else:
-                token = vqd.group(2)
-            if token:
-                api_url = f"https://duckduckgo.com/i.js?q={encoded}&vqd={token}&p=1&o=json"
-                r2 = requests.get(api_url, headers=headers, timeout=10)
-                data = r2.json()
-                for item in data.get("results", [])[:4]:
-                    img = item.get("image", "")
-                    if img and img not in image_urls:
-                        image_urls.append(img)
+            if r.status_code == 200:
+                for item in r.json().get("images", []):
+                    url = item.get("imageUrl", "")
+                    if url and url not in image_urls:
+                        image_urls.append(url)
                     if len(image_urls) >= 3:
                         break
         except Exception:
             pass
+
     return image_urls
 
 # ─── Price comparison ────────────────────────────────────────────────────────
@@ -1216,16 +1212,16 @@ def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) ->
     gsh_q = urllib.parse.quote_plus(" OR ".join(oem_numbers[:3])) if oem_numbers and len(oem_numbers) > 1 else q
     gsh = f"https://www.google.com/search?tbm=shop&q={gsh_q}&gl={gl}"
     return [
-        {"shop": "Google Shopping",  "price": None, "url": gsh,                                           "note": "All shops — click to compare"},
-        {"shop": "Autodoc",          "price": None, "url": f"https://www.autodoc.co.uk/search?query={q}", "note": "Visit site", "shipping": "3-7 days"},
-        {"shop": "Motonet",          "price": None, "url": f"https://www.motonet.fi/fi/search?q={q}",     "note": "Visit site", "shipping": "1-3 days (FI)"},
-        {"shop": "AK24",             "price": None, "url": f"https://www.ak24.fi/fi/search?term={q}",     "note": "Visit site", "shipping": "3-5 days"},
-        {"shop": "Trodo",            "price": None, "url": f"https://trodo.com/en/search?q={q}",          "note": "Visit site", "shipping": "3-7 days"},
-        {"shop": "Biltema",          "price": None, "url": f"https://www.biltema.fi/fi/search?query={q}", "note": "Visit site", "shipping": "1-3 days"},
-        {"shop": "Amazon.de",        "price": None, "url": f"https://www.amazon.de/s?k={q}",              "note": "Visit site", "shipping": "1-3 days"},
-        {"shop": "eBay.de",          "price": None, "url": f"https://www.ebay.de/sch/i.html?_nkw={q}",   "note": "Visit site"},
-        {"shop": "EuroCarParts",     "price": None, "url": f"https://www.eurocarparts.com/search/{q}",    "note": "Visit site", "shipping": "1-3 days"},
-        {"shop": "Oscaro",           "price": None, "url": f"https://www.oscaro.com/search?q={q}",        "note": "Visit site"},
+        {"shop": "Google Shopping",  "price": None, "url": gsh,                                                      "note": "Kaikki kaupat — klikkaa vertaillaksesi"},
+        {"shop": "Autodoc",          "price": None, "url": f"https://www.autodoc.fi/search?query={q}",               "note": "Katso sivustolta", "shipping": "3-7 days"},
+        {"shop": "Motonet",          "price": None, "url": f"https://www.motonet.fi/fi/search?q={q}",                "note": "Katso sivustolta", "shipping": "1-3 days (FI)"},
+        {"shop": "AK24",             "price": None, "url": f"https://www.ak24.fi/fi/search?term={q}",                "note": "Katso sivustolta", "shipping": "3-5 days"},
+        {"shop": "Trodo",            "price": None, "url": f"https://trodo.com/en/search?q={q}",                     "note": "Katso sivustolta", "shipping": "3-7 days"},
+        {"shop": "Biltema",          "price": None, "url": f"https://www.biltema.fi/fi/search?query={q}",            "note": "Katso sivustolta", "shipping": "1-3 days"},
+        {"shop": "Amazon.de",        "price": None, "url": f"https://www.amazon.de/s?k={q}",                         "note": "Katso sivustolta", "shipping": "1-3 days"},
+        {"shop": "eBay.de",          "price": None, "url": f"https://www.ebay.de/sch/i.html?_nkw={q}",              "note": "Katso sivustolta"},
+        {"shop": "EuroCarParts",     "price": None, "url": f"https://www.eurocarparts.com/ecp/c/?q={q}",             "note": "Katso sivustolta", "shipping": "1-3 days"},
+        {"shop": "Oscaro",           "price": None, "url": f"https://www.oscaro.com/search#/?q={q}",                 "note": "Katso sivustolta"},
     ]
 
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0f0f0f">
 <title>Bensalenkkari</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
@@ -15,8 +15,8 @@
   --r:14px; --rs:8px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{font-size:16px;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden}
+html{font-size:16.5px;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden}
 a{color:var(--amber);text-decoration:none}
 button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
 input,select{font-family:inherit}
@@ -37,8 +37,8 @@ input,select{font-family:inherit}
 .cars-scroll::-webkit-scrollbar{display:none}
 .car-card{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;min-width:160px;cursor:pointer;transition:border-color .15s;position:relative}
 .car-card:hover,.car-card:active{border-color:var(--amber);background:var(--amber-glow)}
-.car-card-name{font-size:13px;font-weight:600}
-.car-card-detail{font-size:12px;color:var(--text2);margin-top:2px}
+.car-card-name{font-size:14px;font-weight:700}
+.car-card-detail{font-size:13px;color:var(--text2);margin-top:3px}
 .car-card-parts{font-size:11px;color:var(--text3);margin-top:4px}
 .car-card-del{position:absolute;top:8px;right:8px;color:var(--text3);font-size:18px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .car-card-del:hover{color:var(--red)}
@@ -114,7 +114,7 @@ input,select{font-family:inherit}
 .part-img-wrap{width:90px;height:90px;border-radius:var(--rs);background:var(--surface2);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden}
 .part-img-wrap img{width:100%;height:100%;object-fit:contain}
 .part-name{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;line-height:1.2}
-.part-desc{font-size:13px;color:var(--text2);margin-top:6px;line-height:1.5}
+.part-desc{font-size:14px;color:var(--text2);margin-top:8px;line-height:1.65}
 .part-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .meta-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text2)}
 .meta-chip span{color:var(--text);font-weight:500}
@@ -129,8 +129,10 @@ input,select{font-family:inherit}
 .pn-am{background:rgba(245,158,11,.1);color:var(--amber)}
 .pn-num{font-size:14px;font-weight:600;font-family:monospace;flex:1}
 .pn-brand{font-size:12px;color:var(--text3)}
+.pn-right{display:flex;align-items:center;gap:6px;margin-left:auto}
 .pn-copy{font-size:18px;color:var(--text3);padding:4px;border-radius:6px;cursor:pointer}
 .pn-copy:hover{color:var(--amber)}
+.pn-qual{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(99,102,241,.15);color:#a5b4fc;white-space:nowrap}
 
 /* Tabs */
 .tabs-wrap{position:sticky;top:57px;z-index:90;background:var(--bg);padding:0 20px;border-bottom:1px solid var(--border)}
@@ -149,14 +151,14 @@ input,select{font-family:inherit}
 .guide-step{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
 .guide-step:last-child{border-bottom:none}
 .step-num{width:28px;height:28px;background:var(--amber-glow);border:1px solid var(--amber-dim);border-radius:50%;color:var(--amber);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.step-text{font-size:14px;line-height:1.6}
+.step-text{font-size:15px;line-height:1.7}
 
 /* Prices */
 .price-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;text-decoration:none;transition:border-color .15s}
 .price-card:hover,.price-card:active{border-color:var(--amber)}
 .price-card.best{border-color:var(--amber);background:var(--amber-glow)}
 .price-shop{flex:1}
-.price-shop-name{font-size:14px;font-weight:600}
+.price-shop-name{font-size:15px;font-weight:600}
 .price-ship{font-size:12px;color:var(--text3);margin-top:2px}
 .price-part{font-size:12px;color:var(--text2);margin-top:2px}
 .price-amt{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--amber);white-space:nowrap}
@@ -168,7 +170,7 @@ input,select{font-family:inherit}
 .video-card:last-child{border-bottom:none}
 .video-thumb{width:80px;height:52px;background:var(--surface2);border-radius:var(--rs);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
 .video-thumb img{width:100%;height:100%;object-fit:cover}
-.video-title{font-size:14px;color:var(--text);line-height:1.4}
+.video-title{font-size:14px;color:var(--text);line-height:1.5}
 
 /* Diagrams */
 .diagram-img{width:100%;border-radius:var(--rs);margin-bottom:12px;display:block;background:var(--surface2)}
@@ -203,9 +205,44 @@ input,select{font-family:inherit}
 <div class="app">
 
 <header class="hdr">
-  <div>
-    <div class="logo-text">Bensalenkkari 🔧</div>
-    <div class="logo-sub" id="logo-sub">Varaosahaku</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <!-- Mechanic logo SVG -->
+    <svg width="52" height="44" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- White sedan car body -->
+      <rect x="4" y="26" width="40" height="11" rx="3" fill="#e8e8e8"/>
+      <!-- Car roof/cabin -->
+      <path d="M13 26 Q15 18 22 17 L32 17 Q38 17 40 26Z" fill="#f0f0f0"/>
+      <!-- Windows -->
+      <path d="M16 25 Q17 20 21 19 L26 19 L26 25Z" fill="#a8d4f0" opacity="0.8"/>
+      <path d="M27 25 L27 19 L32 19 Q36 20 37 25Z" fill="#a8d4f0" opacity="0.8"/>
+      <!-- Wheels -->
+      <circle cx="13" cy="37" r="4.5" fill="#333"/>
+      <circle cx="13" cy="37" r="2.5" fill="#888"/>
+      <circle cx="35" cy="37" r="4.5" fill="#333"/>
+      <circle cx="35" cy="37" r="2.5" fill="#888"/>
+      <!-- Door line -->
+      <line x1="26" y1="26" x2="26" y2="36" stroke="#ccc" stroke-width="0.8"/>
+      <!-- Mechanic body -->
+      <rect x="38" y="20" width="10" height="13" rx="3" fill="#f59e0b"/>
+      <!-- Mechanic head -->
+      <circle cx="43" cy="14" r="5.5" fill="#f5c5a3"/>
+      <!-- Hair -->
+      <path d="M38 12 Q39 8 43 8 Q47 8 48 12 Q46 10 43 10 Q40 10 38 12Z" fill="#5c3d1e"/>
+      <!-- Smile -->
+      <path d="M41 16 Q43 18 45 16" stroke="#c0706a" stroke-width="1" fill="none" stroke-linecap="round"/>
+      <!-- Eyes -->
+      <circle cx="41.5" cy="14" r="0.8" fill="#444"/>
+      <circle cx="44.5" cy="14" r="0.8" fill="#444"/>
+      <!-- Wrench -->
+      <rect x="46" y="10" width="2.5" height="11" rx="1.2" fill="#aaa" transform="rotate(30 47 15)"/>
+      <rect x="45" y="8" width="5" height="3" rx="1" fill="#888" transform="rotate(30 47 15)"/>
+      <!-- Mechanic arm on car -->
+      <path d="M38 28 Q36 30 33 30" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="logo-text">Bensalenkkari</div>
+      <div class="logo-sub" id="logo-sub">Varaosahaku</div>
+    </div>
   </div>
   <div style="display:flex;gap:6px;margin-left:auto">
     <button class="lang-btn" id="flag-fi" onclick="setLang('fi')">🇫🇮</button>
@@ -226,8 +263,8 @@ input,select{font-family:inherit}
   <div class="sec-title" id="lbl-lookup">Ajoneuvon haku</div>
   <div class="block">
     <div class="mode-toggle">
-      <button class="toggle-btn active" id="btn-vin-mode" onclick="setMode('vin')" id="lbl-vinlookup">VIN-haku</button>
-      <button class="toggle-btn" id="btn-man-mode" onclick="setMode('manual')" id="lbl-manual">Syötä manuaalisesti</button>
+      <button class="toggle-btn active" id="btn-vin-mode" onclick="setMode('vin')">VIN-haku</button>
+      <button class="toggle-btn" id="btn-man-mode" onclick="setMode('manual')">Syötä manuaalisesti</button>
     </div>
 
     <!-- VIN mode -->
@@ -331,7 +368,7 @@ input,select{font-family:inherit}
     <div class="sec-title" id="lbl-searchpart" style="margin-bottom:12px">Hae varaosa</div>
     <div class="part-row">
       <input id="part-input" placeholder="esim. etujarrupalat, laturi...">
-      <button class="btn-search" id="btn-search">🔍</button>
+      <button class="btn-search" id="btn-search">Hae</button>
     </div>
     <div class="clarify" id="clarify"></div>
     <div class="recent-parts" id="recent-parts"></div>
@@ -348,7 +385,7 @@ input,select{font-family:inherit}
 <div class="results" id="results">
   <div class="part-hdr">
     <div class="part-hero">
-      <div class="part-img-wrap" id="part-img">🔩</div>
+      <div class="part-img-wrap" id="part-img"></div>
       <div style="flex:1">
         <div class="part-name" id="res-name"></div>
         <div class="part-desc" id="res-desc"></div>
@@ -599,7 +636,7 @@ function renderCars() {
   el.innerHTML = cars.map(function(c) {
     var detail = [c.year, c.engine, c.fuel].filter(Boolean).join(' · ');
     var extra = [c.body, c.transmission].filter(Boolean).join(' · ');
-    var parts = c.recent_parts && c.recent_parts.length ? '<div class="car-card-parts">🔧 ' + c.recent_parts.slice(0,3).join(', ') + '</div>' : '';
+    var parts = c.recent_parts && c.recent_parts.length ? '<div class="car-card-parts">' + c.recent_parts.slice(0,3).join(', ') + '</div>' : '';
     return '<div class="car-card" onclick="loadCar(' + JSON.stringify(c).replace(/"/g,'&quot;') + ')">'
       + '<button class="car-card-del" onclick="event.stopPropagation();deleteCarByVin(\'' + c.vin + '\')">×</button>'
       + '<div class="car-card-name">' + (c.make||'?') + ' ' + (c.model||'') + '</div>'
@@ -853,34 +890,36 @@ function renderPartHeader(info, rawPart) {
   document.getElementById('res-name').textContent = info.canonical_name || rawPart;
   document.getElementById('res-desc').textContent = info.description || '';
   var meta = '';
-  if (info.difficulty) meta += '<span class="meta-chip">⚡ <span>' + info.difficulty + '</span></span>';
-  if (info.avg_labor_hours) meta += '<span class="meta-chip">⏱ <span>' + info.avg_labor_hours + '</span></span>';
+  if (info.difficulty) meta += '<span class="meta-chip"><span>' + info.difficulty + '</span></span>';
+  if (info.avg_labor_hours) meta += '<span class="meta-chip"><span>' + info.avg_labor_hours + '</span></span>';
   document.getElementById('res-meta').innerHTML = meta;
 
   // Part numbers
   var nums = info.part_numbers || [];
   var pnBlock = document.getElementById('pn-block');
   if (nums.length) {
-    document.getElementById('pn-list').innerHTML = nums.map(function(p) {
-      var num = typeof p === 'object' ? p.number : p;
-      var brand = typeof p === 'object' ? (p.brand || '') : '';
-      var type = typeof p === 'object' ? (p.type || 'OEM') : 'OEM';
+    var pnHtml = nums.map(function(p) {
+      var num   = typeof p === 'object' ? p.number  : p;
+      var brand = typeof p === 'object' ? (p.brand  || '') : '';
+      var type  = typeof p === 'object' ? (p.type   || 'OEM') : 'OEM';
+      var qual  = typeof p === 'object' ? (p.quality || '') : '';
       var isOEM = type.toUpperCase().includes('OEM');
+      var qualBadge = qual ? '<span class="pn-qual">' + qual + '</span>' : '';
       return '<div class="pn-row">'
         + '<span class="pn-type ' + (isOEM ? 'pn-oem' : 'pn-am') + '">' + type + '</span>'
         + '<span class="pn-num">' + num + '</span>'
-        + '<span class="pn-brand">' + brand + '</span>'
-        + '<span class="pn-copy" onclick="copyNum(\'' + num + '\')" title="Kopioi">⧉</span>'
+        + '<div class="pn-right"><span class="pn-brand">' + brand + '</span>'
+        + qualBadge
+        + '<span class="pn-copy" onclick="copyNum('' + num + '')" title="Kopioi">⧉</span></div>'
         + '</div>';
     }).join('');
+    if (info.oem_note) {
+      pnHtml += '<p style="font-size:12px;color:var(--text3);margin-top:10px;line-height:1.5">' + info.oem_note + '</p>';
+    }
+    document.getElementById('pn-list').innerHTML = pnHtml;
     pnBlock.style.display = '';
   } else {
     pnBlock.style.display = 'none';
-  }
-
-  if (info.oem_note) {
-    document.getElementById('pn-list').innerHTML +=
-      '<p style="font-size:12px;color:var(--text3);margin-top:10px">' + info.oem_note + '</p>';
   }
 
   // Tools
@@ -899,7 +938,7 @@ function renderPartHeader(info, rawPart) {
     var m = line.match(/^(\d+)\.\s*(.*)/);
     if (m) return '<div class="guide-step"><div class="step-num">' + m[1] + '</div><div class="step-text">' + m[2] + '</div></div>';
     return '<div class="guide-step"><div class="step-num" style="visibility:hidden">·</div><div class="step-text" style="color:var(--text2)">' + line.trim() + '</div></div>';
-  }).join('') : '<div class="empty"><div class="empty-icon">📋</div>Ei ohjetta saatavilla</div>';
+  }).join('') : '<div class="empty">Ei ohjetta saatavilla</div>';
 
   // Reset to guide tab
   document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab==='guide'); });
@@ -911,7 +950,7 @@ function setPartImage(url) {
   var img = document.createElement('img');
   img.src = url;
   img.alt = 'Part';
-  img.onerror = function(){ wrap.innerHTML = '🔩'; };
+  img.onerror = function(){ wrap.innerHTML = ''; };
   wrap.innerHTML = '';
   wrap.appendChild(img);
 }
@@ -923,7 +962,7 @@ function copyNum(num) {
 function renderPrices(prices) {
   var el = document.getElementById('prices-list');
   if (!prices || !prices.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">💶</div>' + t('no-prices') + '</div>';
+    el.innerHTML = '<div class="empty">' + t('no-prices') + '</div>';
     return;
   }
   var priced = prices.filter(function(p){ return p.price != null; });
@@ -931,7 +970,7 @@ function renderPrices(prices) {
   el.innerHTML = prices.map(function(p) {
     var isBest = cheapest && p.shop === cheapest.shop;
     var priceStr = p.price != null ? '€' + p.price.toFixed(2) : t('see-site');
-    var ship = p.shipping && p.shipping !== '—' ? '<div class="price-ship">🚚 ' + p.shipping + '</div>' : '';
+    var ship = p.shipping && p.shipping !== '—' ? '<div class="price-ship">' + p.shipping + '</div>' : '';
     var partName = p.part ? '<div class="price-part">' + p.part + '</div>' : '';
     return '<a href="' + (p.url||'#') + '" target="_blank" rel="noopener" class="price-card' + (isBest?' best':'') + '">'
       + '<div class="price-shop">'
@@ -945,7 +984,7 @@ function renderPrices(prices) {
 function renderVideos(videos) {
   var el = document.getElementById('videos-list');
   if (!videos || !videos.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">▶️</div>' + t('no-videos') + '</div>';
+    el.innerHTML = '<div class="empty">' + t('no-videos') + '</div>';
     return;
   }
   el.innerHTML = videos.map(function(v) {
@@ -1012,9 +1051,9 @@ function renderDiagrams(data, part) {
         }).join('')
       + '</div>';
   } else {
-    galleryHtml = '<div class="empty"><div class="empty-icon">🖼</div>' + t('no-diagrams') + '</div>';
+    galleryHtml = '<div class="empty">' + t('no-diagrams') + '</div>';
   }
-  el.innerHTML = galleryHtml + '<a href="' + gLink + '" target="_blank" class="diagram-link"><span>🔍</span>' + t('diagram-search') + '</a>';
+  el.innerHTML = galleryHtml + '<a href="' + gLink + '" target="_blank" class="diagram-link">' + t('diagram-search') + '</a>';
 }
 
 

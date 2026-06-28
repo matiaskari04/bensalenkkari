@@ -159,8 +159,11 @@ def api_diagrams():
     car  = data.get("car") or {}
     part = (data.get("part") or "").strip()
     try:
-        urls = get_exploded_view_images(part, car)
-        return jsonify({"urls": urls})
+        images = get_exploded_view_images(part, car)
+        # Handle both old list[str] and new list[dict] formats
+        if images and isinstance(images[0], str):
+            images = [{"url": u, "title": ""} for u in images]
+        return jsonify({"images": images})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

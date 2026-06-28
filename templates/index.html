@@ -184,6 +184,19 @@ input,select{font-family:inherit}
 .toast.show{transform:translateX(-50%) translateY(0)}
 
 @media(max-width:380px){.part-img-wrap{width:72px;height:72px}.part-name{font-size:19px}}
+.diagram-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.diagram-thumb{border-radius:var(--rs);overflow:hidden;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:border-color .15s}
+.diagram-thumb:hover,.diagram-thumb:active{border-color:var(--amber)}
+.diagram-thumb img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.diagram-thumb-title{font-size:11px;color:var(--text3);padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:1000;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px}
+.lightbox.open{display:flex}
+.lightbox-img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:var(--rs)}
+.lightbox-title{color:var(--text2);font-size:12px;margin-top:10px;text-align:center;max-width:90%}
+.lightbox-close{position:absolute;top:16px;right:16px;color:#fff;font-size:32px;cursor:pointer;line-height:1}
+.lightbox-nav{display:flex;gap:20px;margin-top:14px}
+.lightbox-nav button{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:22px;padding:8px 22px;cursor:pointer;transition:border-color .15s}
+.lightbox-nav button:hover{border-color:var(--amber)}
 </style>
 </head>
 <body>
@@ -194,7 +207,10 @@ input,select{font-family:inherit}
     <div class="logo-text">Bensalenkkari 🔧</div>
     <div class="logo-sub" id="logo-sub">Varaosahaku</div>
   </div>
-  <button class="lang-btn" onclick="toggleLang()">🇬🇧 EN</button>
+  <div style="display:flex;gap:6px;margin-left:auto">
+    <button class="lang-btn" id="flag-fi" onclick="setLang('fi')">🇫🇮</button>
+    <button class="lang-btn" id="flag-en" onclick="setLang('en')">🇬🇧</button>
+  </div>
 </header>
 
 <!-- My Cars -->
@@ -368,6 +384,16 @@ input,select{font-family:inherit}
 </div>
 
 </div><!-- /app -->
+<div class="lightbox" id="lightbox" onclick="closeLightboxEl()">
+  <span class="lightbox-close" onclick="closeLightboxEl()">×</span>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+  <div class="lightbox-title" id="lightbox-title"></div>
+  <div class="lightbox-nav">
+    <button onclick="lightboxNav(-1)">‹</button>
+    <button onclick="lightboxNav(1)">›</button>
+  </div>
+</div>
+<div class="lightbox-bg" onclick="closeLightboxEl()" style="display:none"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -423,6 +449,91 @@ var TR = {
 
 function t(key) { return (TR[LANG] || TR.fi)[key] || TR.fi[key] || key; }
 
+// Finnish → English part name translations for API searches
+var FI_TO_EN_PARTS = {
+  'etujarrupalat': 'front brake pads',
+  'takajarrupalat': 'rear brake pads',
+  'jarrupalat': 'brake pads',
+  'jarrulevyt': 'brake discs',
+  'etujarrulevyt': 'front brake discs',
+  'takajarrulevyt': 'rear brake discs',
+  'jarrusatula': 'brake caliper',
+  'etuiskunvaimennin': 'front shock absorber',
+  'takaiskunvaimennin': 'rear shock absorber',
+  'iskunvaimennin': 'shock absorber',
+  'jouset': 'springs',
+  'etujousto': 'front spring',
+  'takajousto': 'rear spring',
+  'tukivarsi': 'control arm',
+  'alatukivarsi': 'lower control arm',
+  'ylätukivarsi': 'upper control arm',
+  'pallotukilenkin': 'ball joint',
+  'pallonivel': 'ball joint',
+  'raidetanko': 'tie rod',
+  'pyörälaakeri': 'wheel bearing',
+  'vetoakseli': 'cv axle',
+  'tasonivelakseli': 'cv axle',
+  'laturi': 'alternator',
+  'käynnistin': 'starter motor',
+  'vesipumppu': 'water pump',
+  'hammashihna': 'timing belt',
+  'kiilahihna': 'drive belt',
+  'termostaatti': 'thermostat',
+  'jäähdytin': 'radiator',
+  'öljynsuodatin': 'oil filter',
+  'ilmansuodatin': 'air filter',
+  'polttoainesuodatin': 'fuel filter',
+  'sytytystulpat': 'spark plugs',
+  'sytytystulppa': 'spark plug',
+  'kytkin': 'clutch',
+  'kytkinsarja': 'clutch kit',
+  'pakoputki': 'exhaust pipe',
+  'katalysaattori': 'catalytic converter',
+  'lambda-anturi': 'oxygen sensor',
+  'happianturi': 'oxygen sensor',
+  'etupyörän laakeri': 'front wheel bearing',
+  'takapyörän laakeri': 'rear wheel bearing',
+  'ohjausvaihde': 'steering rack',
+  'ohjausnivel': 'steering joint',
+  'vakaaja': 'stabilizer bar',
+  'vakaajan tanko': 'sway bar link',
+  'polttoainepumppu': 'fuel pump',
+  'moottoriöljy': 'engine oil',
+  'jäähdytysneste': 'coolant',
+  'jarruneste': 'brake fluid',
+  'vaihteistoöljy': 'gearbox oil',
+  'etupuskuri': 'front bumper',
+  'takapuskuri': 'rear bumper',
+  'konepelti': 'hood bonnet',
+  'tuulilasi': 'windshield',
+  'pyyhkijänsulat': 'wiper blades',
+  'akku': 'battery',
+  'ajovalo': 'headlight',
+  'takavalo': 'tail light',
+  'suuntavalo': 'turn signal',
+  'peili': 'mirror',
+  'sivupeili': 'side mirror',
+};
+
+function translatePartToEN(part) {
+  var low = part.toLowerCase().trim();
+  // Direct match
+  if (FI_TO_EN_PARTS[low]) return FI_TO_EN_PARTS[low];
+  // Partial match — find longest matching key
+  var best = null;
+  var bestLen = 0;
+  Object.keys(FI_TO_EN_PARTS).forEach(function(key) {
+    if (low.includes(key) && key.length > bestLen) {
+      best = FI_TO_EN_PARTS[key];
+      bestLen = key.length;
+    }
+  });
+  if (best) return best;
+  // Try to detect if it's likely Finnish (has ä, ö, or common Finnish patterns)
+  // and pass through to AI translation if needed
+  return part; // return as-is if no translation found
+}
+
 function applyLang() {
   Object.keys(TR.fi).forEach(function(key) {
     var el = document.getElementById(key);
@@ -434,18 +545,21 @@ function applyLang() {
   if (lb) lb.textContent = t('lbl-vinlookup');
   var mb = document.getElementById('btn-man-mode');
   if (mb) mb.textContent = t('lbl-manual');
-  document.getElementById('lang-toggle-btn') && (document.getElementById('lang-toggle-btn').textContent = LANG === 'fi' ? '🇬🇧 EN' : '🇫🇮 FI');
-  // update lang button
-  var btns = document.querySelectorAll('.lang-btn');
-  btns.forEach(function(b) { b.textContent = LANG === 'fi' ? '🇬🇧 EN' : '🇫🇮 FI'; });
+  // Highlight active flag button
+  var fi = document.getElementById('flag-fi');
+  var en = document.getElementById('flag-en');
+  if (fi) fi.style.opacity = LANG === 'fi' ? '1' : '0.4';
+  if (en) en.style.opacity = LANG === 'en' ? '1' : '0.4';
 }
 
-function toggleLang() {
-  LANG = LANG === 'fi' ? 'en' : 'fi';
-  localStorage.setItem('blang', LANG);
+function setLang(lang) {
+  LANG = lang;
+  localStorage.setItem('blang', lang);
   applyLang();
   renderCars();
 }
+
+function toggleLang() { setLang(LANG === 'fi' ? 'en' : 'fi'); }
 
 // ── localStorage cars ─────────────────────────────────────────
 function getCars() {
@@ -690,6 +804,13 @@ function doPartSearch() {
 }
 
 function runSearch(part) {
+  // Auto-translate Finnish part names to English for better API results
+  var partEN = translatePartToEN(part);
+  if (partEN !== part) {
+    console.log('Translated part: ' + part + ' → ' + partEN);
+    part = partEN;
+  }
+
   setLoading(true, t('loading-oem'));
   document.getElementById('results').classList.remove('show');
   document.getElementById('btn-search').disabled = true;
@@ -837,18 +958,65 @@ function renderVideos(videos) {
   }).join('');
 }
 
+// Lightbox state
+var lightboxImages = [];
+var lightboxIndex = 0;
+
+function openLightbox(index) {
+  lightboxIndex = index;
+  updateLightbox();
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightboxEl() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function lightboxNav(dir) {
+  lightboxIndex = (lightboxIndex + dir + lightboxImages.length) % lightboxImages.length;
+  updateLightbox();
+}
+
+function updateLightbox() {
+  var item = lightboxImages[lightboxIndex];
+  if (!item) return;
+  document.getElementById('lightbox-img').src = item.url;
+  document.getElementById('lightbox-title').textContent = item.title || '';
+}
+
+document.addEventListener('keydown', function(e) {
+  var lb = document.getElementById('lightbox');
+  if (!lb.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightboxEl();
+  if (e.key === 'ArrowLeft') lightboxNav(-1);
+  if (e.key === 'ArrowRight') lightboxNav(1);
+});
+
 function renderDiagrams(data, part) {
   var el = document.getElementById('diagrams-content');
-  var urls = (data && data.urls) || [];
+  var images = (data && data.images) || [];
   var car = currentCar || {};
   var q = encodeURIComponent((car.make||'') + ' ' + (car.model||'') + ' ' + part + ' exploded view diagram');
   var gLink = 'https://www.google.com/search?tbm=isch&q=' + q;
-  el.innerHTML = urls.map(function(url) {
-    return '<img class="diagram-img" src="' + url + '" alt="Diagram" onerror="this.style.display=\'none\'">';
-  }).join('')
-  + '<a href="' + gLink + '" target="_blank" class="diagram-link">'
-  + '<span>🖼</span>' + t('diagram-search') + '</a>';
+  lightboxImages = images;
+  var galleryHtml = '';
+  if (images.length) {
+    galleryHtml = '<div class="diagram-gallery">'
+      + images.map(function(img, i) {
+          return '<div class="diagram-thumb" onclick="openLightbox(' + i + ')">'
+            + '<img src="' + img.url + '" alt="" onerror="this.parentElement.style.display='none'">'
+            + '<div class="diagram-thumb-title">' + (img.title || 'Kaavio ' + (i+1)) + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div>';
+  } else {
+    galleryHtml = '<div class="empty"><div class="empty-icon">🖼</div>' + t('no-diagrams') + '</div>';
+  }
+  el.innerHTML = galleryHtml + '<a href="' + gLink + '" target="_blank" class="diagram-link"><span>🔍</span>' + t('diagram-search') + '</a>';
 }
+
 
 // ── Tabs ───────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(function(btn) {

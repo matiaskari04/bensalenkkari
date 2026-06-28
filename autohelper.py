@@ -973,14 +973,30 @@ def search_youtube(query: str) -> list[dict]:
         return []
 
 # ─── Exploded view / diagram search ──────────────────────────────────────────
-def get_exploded_view_images(part: str, car: dict) -> list[str]:
-    """Fetch exploded view diagram image URLs via Serper Images API."""
+def get_exploded_view_images(part: str, car: dict) -> list[dict]:
+    """Fetch exploded view diagram images via Serper Images API.
+    Returns list of {url, title} dicts. Uses specific queries to avoid wrong parts."""
     serper_key = os.environ.get("SERPER_API_KEY", "")
-    car_str = f"{car.get('make','')} {car.get('model','')} {car.get('year','')}".strip()
-    query = f"{car_str} {part} exploded view diagram"
-    image_urls = []
+    make  = car.get("make", "")
+    model = car.get("model", "")
+    year  = car.get("year", "")
 
-    if serper_key:
+    # Use multiple targeted queries — car-specific first, then generic part diagram
+    queries = [
+        f"{make} {model} {year} {part} diagram",
+        f"{make} {model} {part} exploded diagram",
+        f"{part} exploded view parts diagram",
+    ]
+
+    results = []
+    seen_urls = set()
+
+    if not serper_key:
+        return results
+
+    for query in queries:
+        if len(results) >= 6:
+            break
         try:
             r = requests.post(
                 "https://google.serper.dev/images",
@@ -988,17 +1004,27 @@ def get_exploded_view_images(part: str, car: dict) -> list[str]:
                 json={"q": query, "num": 6},
                 timeout=10,
             )
-            if r.status_code == 200:
-                for item in r.json().get("images", []):
-                    url = item.get("imageUrl", "")
-                    if url and url not in image_urls:
-                        image_urls.append(url)
-                    if len(image_urls) >= 3:
-                        break
+            if r.status_code != 200:
+                continue
+            for item in r.json().get("images", []):
+                url = item.get("imageUrl", "")
+                title = item.get("title", query)
+                # Filter out obviously wrong images — must relate to the part
+                part_words = part.lower().split()
+                title_low = title.lower()
+                # Skip if title mentions a completely different major assembly
+                skip_words = ["transmission", "gearbox", "engine block", "cylinder head"]
+                if any(s in title_low for s in skip_words) and not any(p in title_low for p in part_words):
+                    continue
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    results.append({"url": url, "title": title})
+                if len(results) >= 6:
+                    break
         except Exception:
             pass
 
-    return image_urls
+    return results
 
 # ─── Price comparison ────────────────────────────────────────────────────────
 # Uses Google Shopping via Serper.dev (free: 2500 searches/month).

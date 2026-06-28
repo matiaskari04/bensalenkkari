@@ -175,6 +175,16 @@ def api_part_image():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/save-car", methods=["POST"])
+def api_save_car():
+    """Save a manually entered car."""
+    car = request.json or {}
+    vin = car.get("vin", "").strip()
+    if not vin:
+        return jsonify({"error": "vin required"}), 400
+    upsert_car(car, vin)
+    return jsonify({"ok": True})
+
 @app.route("/api/delete-car", methods=["POST"])
 def api_delete_car():
     data = request.json or {}

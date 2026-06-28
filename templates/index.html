@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<title>Bensalenkkari</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens ─────────────────────────────────────────────────── */
+:root {
+  --bg:        #0f0f0f;
+  --surface:   #1a1a1a;
+  --surface2:  #242424;
+  --border:    #2e2e2e;
+  --amber:     #f59e0b;
+  --amber-dim: #b45309;
+  --amber-glow:rgba(245,158,11,.12);
+  --text:      #f0f0f0;
+  --text-2:    #a0a0a0;
+  --text-3:    #666;
+  --green:     #22c55e;
+  --red:       #ef4444;
+  --radius:    14px;
+  --radius-sm: 8px;
+  --shadow:    0 4px 24px rgba(0,0,0,.5);
+}
+
+/* ── Reset ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+a { color: var(--amber); text-decoration: none; }
+button { cursor: pointer; border: none; background: none; font-family: inherit; }
+input { font-family: inherit; }
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.app { max-width: 600px; margin: 0 auto; padding: 0 0 100px; }
+
+/* ── Header ─────────────────────────────────────────────────── */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { font-size: 22px; }
+.logo-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--amber);
+  letter-spacing: -0.3px;
+}
+.logo-sub { font-size: 11px; color: var(--text-3); margin-top: -2px; }
+
+/* ── Sections ───────────────────────────────────────────────── */
+.section { padding: 24px 20px 0; }
+.section-title {
+  font-size: 11px; font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+}
+
+/* ── My Cars ─────────────────────────────────────────────────── */
+.cars-scroll {
+  display: flex; gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.cars-scroll::-webkit-scrollbar { display: none; }
+.car-card {
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  min-width: 160px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  position: relative;
+}
+.car-card:hover, .car-card:active { border-color: var(--amber); background: var(--amber-glow); }
+.car-card-make { font-size: 13px; font-weight: 600; color: var(--text); }
+.car-card-model { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.car-card-year { font-size: 11px; color: var(--amber); margin-top: 6px; }
+.car-card-parts { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.car-card-del {
+  position: absolute; top: 8px; right: 8px;
+  color: var(--text-3); font-size: 16px;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+}
+.car-card-del:hover { color: var(--red); background: rgba(239,68,68,.1); }
+.cars-empty { color: var(--text-3); font-size: 13px; padding: 8px 0; }
+
+/* ── VIN Input ───────────────────────────────────────────────── */
+.vin-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.input-row { display: flex; gap: 10px; margin-bottom: 12px; }
+.input-wrap { flex: 1; position: relative; }
+.input-wrap label {
+  display: block;
+  font-size: 11px; font-weight: 500;
+  color: var(--text-3);
+  margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: 0.8px;
+}
+.input-wrap input, .input-wrap select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 15px;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color .15s;
+  -webkit-appearance: none;
+}
+.input-wrap input:focus, .input-wrap select:focus { border-color: var(--amber); }
+.input-wrap input::placeholder { color: var(--text-3); }
+.input-wrap select option { background: var(--surface2); }
+.btn-lookup {
+  width: 100%;
+  background: var(--amber);
+  color: #000;
+  font-size: 15px; font-weight: 600;
+  padding: 13px;
+  border-radius: var(--radius-sm);
+  transition: opacity .15s, transform .1s;
+  letter-spacing: 0.2px;
+}
+.btn-lookup:active { opacity: .85; transform: scale(.98); }
+.btn-lookup:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Car Result ──────────────────────────────────────────────── */
+.car-result {
+  background: var(--surface);
+  border: 1px solid var(--amber);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: none;
+}
+.car-result.show { display: block; }
+.car-result-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 20px; font-weight: 700;
+  color: var(--text);
+}
+.car-result-detail { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+.car-result-vin { font-size: 11px; color: var(--text-3); margin-top: 6px; font-family: monospace; }
+.confidence-badge {
+  display: inline-block;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-top: 8px;
+}
+.confidence-high { background: rgba(34,197,94,.15); color: var(--green); }
+.confidence-low  { background: rgba(239,68,68,.15); color: var(--red); }
+
+/* ── Part Search ─────────────────────────────────────────────── */
+.part-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: none;
+}
+.part-block.show { display: block; }
+.part-input-row { display: flex; gap: 10px; }
+.part-input-row input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 15px;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color .15s;
+}
+.part-input-row input:focus { border-color: var(--amber); }
+.part-input-row input::placeholder { color: var(--text-3); }
+.btn-search {
+  background: var(--amber);
+  color: #000;
+  font-size: 22px;
+  width: 48px; height: 48px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: opacity .15s;
+}
+.btn-search:active { opacity: .8; }
+.clarify-prompt {
+  background: rgba(245,158,11,.1);
+  border: 1px solid var(--amber-dim);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--amber);
+  margin-top: 12px;
+  display: none;
+}
+.clarify-prompt.show { display: block; }
+.recent-parts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.recent-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px; color: var(--text-2);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.recent-chip:hover { border-color: var(--amber); color: var(--amber); }
+
+/* ── Loading ─────────────────────────────────────────────────── */
+.loading-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 16px 0;
+  display: none;
+}
+.loading-bar.show { display: block; }
+.loading-bar-fill {
+  height: 100%;
+  background: var(--amber);
+  border-radius: 3px;
+  width: 0;
+  animation: load 2.5s ease-in-out infinite;
+}
+@keyframes load { 0%{width:0;opacity:1} 80%{width:90%;opacity:1} 100%{width:100%;opacity:0} }
+.loading-text { font-size: 13px; color: var(--text-3); text-align: center; padding: 8px 0; }
+
+/* ── Results ─────────────────────────────────────────────────── */
+.results { display: none; }
+.results.show { display: block; }
+
+.part-header {
+  padding: 20px 20px 0;
+}
+.part-hero {
+  display: flex; gap: 16px; align-items: flex-start;
+}
+.part-image {
+  width: 90px; height: 90px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.part-image-placeholder {
+  width: 90px; height: 90px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+}
+.part-title-block { flex: 1; }
+.part-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 22px; font-weight: 700;
+  line-height: 1.2;
+}
+.part-desc { font-size: 13px; color: var(--text-2); margin-top: 6px; line-height: 1.5; }
+.part-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.meta-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 12px; color: var(--text-2);
+}
+.meta-chip span { color: var(--text); font-weight: 500; }
+
+/* ── Part Numbers ────────────────────────────────────────────── */
+.part-numbers {
+  margin: 16px 20px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.part-numbers-title { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600; }
+.pn-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.pn-row:last-child { border-bottom: none; }
+.pn-type {
+  font-size: 10px; font-weight: 600;
+  padding: 2px 7px; border-radius: 10px;
+  flex-shrink: 0;
+}
+.pn-type.oem { background: rgba(34,197,94,.15); color: var(--green); }
+.pn-type.aftermarket { background: rgba(245,158,11,.1); color: var(--amber); }
+.pn-number { font-size: 14px; font-weight: 600; font-family: monospace; flex: 1; }
+.pn-brand { font-size: 12px; color: var(--text-3); }
+.pn-copy {
+  font-size: 18px; color: var(--text-3); padding: 4px;
+  border-radius: 6px; cursor: pointer;
+}
+.pn-copy:hover { color: var(--amber); }
+
+/* ── Tabs ────────────────────────────────────────────────────── */
+.tabs-wrap {
+  position: sticky; top: 57px; z-index: 90;
+  background: var(--bg);
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.tabs {
+  display: flex; gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex-shrink: 0;
+  padding: 14px 16px;
+  font-size: 13px; font-weight: 500;
+  color: var(--text-3);
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+.tab-panel { display: none; padding: 20px; }
+.tab-panel.active { display: block; }
+
+/* ── Guide tab ───────────────────────────────────────────────── */
+.guide-step {
+  display: flex; gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.guide-step:last-child { border-bottom: none; }
+.step-num {
+  width: 28px; height: 28px;
+  background: var(--amber-glow);
+  border: 1px solid var(--amber-dim);
+  border-radius: 50%;
+  color: var(--amber);
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.step-text { font-size: 14px; line-height: 1.6; color: var(--text); }
+.step-sub { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+
+.tools-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.tools-box-title { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600; }
+.tools-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.tool-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 12px; color: var(--text-2);
+}
+
+/* ── Prices tab ──────────────────────────────────────────────── */
+.price-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color .15s;
+}
+.price-card:hover, .price-card:active { border-color: var(--amber); }
+.price-card.best { border-color: var(--amber); background: var(--amber-glow); }
+.price-shop { flex: 1; }
+.price-shop-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.price-shop-part { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.price-shipping { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.price-amount {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--amber);
+  white-space: nowrap;
+}
+.price-amount.no-price { font-size: 13px; color: var(--text-3); }
+.best-badge {
+  font-size: 10px; font-weight: 600;
+  background: var(--amber);
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── Videos tab ──────────────────────────────────────────────── */
+.video-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  text-decoration: none;
+}
+.video-card:last-child { border-bottom: none; }
+.video-thumb {
+  width: 80px; height: 52px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.video-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.video-title { font-size: 14px; color: var(--text); line-height: 1.4; }
+.video-channel { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+/* ── Diagrams tab ────────────────────────────────────────────── */
+.diagram-img {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  background: var(--surface2);
+  display: block;
+}
+.diagram-link {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  text-decoration: none;
+  color: var(--text);
+  font-size: 14px;
+  transition: border-color .15s;
+}
+.diagram-link:hover { border-color: var(--amber); }
+.diagram-link-icon { font-size: 20px; }
+
+/* ── Empty / error states ────────────────────────────────────── */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-3); font-size: 14px; }
+.empty-icon { font-size: 36px; margin-bottom: 10px; }
+.error-box {
+  background: rgba(239,68,68,.1);
+  border: 1px solid rgba(239,68,68,.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--red);
+  margin: 12px 20px;
+  display: none;
+}
+.error-box.show { display: block; }
+
+/* ── Toast ───────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 13px; color: var(--text);
+  z-index: 999;
+  transition: transform .25s ease;
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Spinner ─────────────────────────────────────────────────── */
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .part-image, .part-image-placeholder { width: 72px; height: 72px; }
+  .part-name { font-size: 19px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <span class="logo-icon">🔧</span>
+      <div>
+        <div class="logo-text">Bensalenkkari</div>
+        <div class="logo-sub">Auto parts lookup</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- My Cars -->
+  <section class="section" id="my-cars-section">
+    <div class="section-title">My Cars</div>
+    <div class="cars-scroll" id="cars-list">
+      <div class="cars-empty">No saved cars yet — look up a VIN below</div>
+    </div>
+  </section>
+
+  <!-- VIN Lookup -->
+  <section class="section">
+    <div class="section-title">Vehicle Lookup</div>
+    <div class="vin-block">
+      <div class="input-row">
+        <div class="input-wrap" style="flex:2">
+          <label>VIN Code</label>
+          <input type="text" id="vin-input" placeholder="YS3EB59A..." maxlength="17" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <div class="input-wrap" style="flex:1">
+          <label>Region</label>
+          <select id="country-select">
+            <option value="FI">🇫🇮 FI</option>
+            <option value="SE">🇸🇪 SE</option>
+            <option value="NO">🇳🇴 NO</option>
+            <option value="DE">🇩🇪 DE</option>
+            <option value="GB">🇬🇧 GB</option>
+            <option value="US">🇺🇸 US</option>
+            <option value="EE">🇪🇪 EE</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-lookup" id="btn-lookup">Look up vehicle</button>
+    </div>
+  </section>
+
+  <!-- Car result -->
+  <section class="section">
+    <div class="car-result" id="car-result">
+      <div class="car-result-name" id="car-name">—</div>
+      <div class="car-result-detail" id="car-detail">—</div>
+      <div class="car-result-vin" id="car-vin-display">—</div>
+      <span class="confidence-badge" id="car-confidence"></span>
+    </div>
+    <div class="error-box" id="vin-error"></div>
+  </section>
+
+  <!-- Part search -->
+  <section class="section">
+    <div class="part-block" id="part-block">
+      <div class="section-title" style="margin-bottom:12px">Search Part</div>
+      <div class="part-input-row">
+        <input type="text" id="part-input" placeholder="e.g. front brake pads, alternator...">
+        <button class="btn-search" id="btn-search">🔍</button>
+      </div>
+      <div class="clarify-prompt" id="clarify-prompt"></div>
+      <div class="recent-parts" id="recent-parts"></div>
+    </div>
+  </section>
+
+  <!-- Loading -->
+  <div style="padding: 0 20px" id="loading-wrap">
+    <div class="loading-bar" id="loading-bar"><div class="loading-bar-fill"></div></div>
+    <div class="loading-text" id="loading-text"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+
+    <!-- Part header -->
+    <div class="part-header">
+      <div class="part-hero">
+        <div class="part-image-placeholder" id="part-image-wrap">🔩</div>
+        <div class="part-title-block">
+          <div class="part-name" id="result-part-name">—</div>
+          <div class="part-desc" id="result-desc">—</div>
+          <div class="part-meta" id="result-meta"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Part numbers -->
+    <div class="part-numbers" id="part-numbers-block">
+      <div class="part-numbers-title">Part Numbers</div>
+      <div id="part-numbers-list"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-wrap">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="guide">Guide</button>
+        <button class="tab-btn" data-tab="prices">Prices</button>
+        <button class="tab-btn" data-tab="videos">Videos</button>
+        <button class="tab-btn" data-tab="diagrams">Diagrams</button>
+      </div>
+    </div>
+
+    <!-- Guide -->
+    <div class="tab-panel active" id="tab-guide">
+      <div class="tools-box" id="tools-box" style="display:none">
+        <div class="tools-box-title">Tools needed</div>
+        <div class="tools-list" id="tools-list"></div>
+      </div>
+      <div id="guide-steps"></div>
+    </div>
+
+    <!-- Prices -->
+    <div class="tab-panel" id="tab-prices">
+      <div id="prices-list"></div>
+    </div>
+
+    <!-- Videos -->
+    <div class="tab-panel" id="tab-videos">
+      <div id="videos-list"></div>
+    </div>
+
+    <!-- Diagrams -->
+    <div class="tab-panel" id="tab-diagrams">
+      <div id="diagrams-content"></div>
+    </div>
+
+  </div><!-- /results -->
+
+</div><!-- /app -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let currentCar = null;
+let currentPartInfo = null;
+let clarifyMode = null; // {ambiguous, question}
+
+// ── Ambiguous parts (mirrors Python dict) ──────────────────────
+const AMBIGUOUS = {
+  "brake pad":        "Which axle? Front or rear?",
+  "brake pads":       "Which axle? Front or rear?",
+  "brake disc":       "Which axle? Front or rear?",
+  "brake discs":      "Which axle? Front or rear?",
+  "brake rotor":      "Which axle? Front or rear?",
+  "shock absorber":   "Which corner? (front-left / front-right / rear-left / rear-right)",
+  "shock":            "Which corner? (front-left / front-right / rear-left / rear-right)",
+  "strut":            "Which corner? (front-left / front-right / rear-left / rear-right)",
+  "control arm":      "Which? (front-left / front-right / rear-left / rear-right, upper / lower)",
+  "ball joint":       "Which? (front-left / front-right / rear-left / rear-right, upper / lower)",
+  "wheel bearing":    "Which corner? (front-left / front-right / rear-left / rear-right)",
+  "tie rod":          "Which side + inner or outer?",
+  "caliper":          "Which corner? (front-left / front-right / rear-left / rear-right)",
+  "cv axle":          "Which side? Left or right?",
+  "cv joint":         "Which side? Left or right?",
+  "headlight":        "Which side? Left or right?",
+  "taillight":        "Which side? Left or right?",
+  "mirror":           "Which side? Left or right?",
+  "spring":           "Which corner? (front-left / front-right / rear-left / rear-right)",
+  "oxygen sensor":    "Which? Upstream (before cat) or downstream? Bank 1 or 2?",
+  "o2 sensor":        "Which? Upstream or downstream? Bank 1 or 2?",
+  "wiper blade":      "Which? Driver, passenger, or rear?",
+};
+
+const CLARIFY_WORDS = ["front","rear","left","right","upper","lower","inner","outer","driver","passenger","upstream","downstream"];
+
+function needsClarify(part) {
+  const low = part.toLowerCase();
+  if (CLARIFY_WORDS.some(w => low.includes(w))) return null;
+  for (const [key, q] of Object.entries(AMBIGUOUS)) {
+    if (low.includes(key)) return {key, q};
+  }
+  return null;
+}
+
+// ── Utils ──────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function loading(show, text = "") {
+  document.getElementById("loading-bar").classList.toggle("show", show);
+  document.getElementById("loading-text").textContent = text;
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.toggle("show", !!msg);
+}
+
+async function api(endpoint, body) {
+  const r = await fetch(endpoint, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast("Copied!"));
+}
+
+// ── My Cars ────────────────────────────────────────────────────
+async function loadMyCars() {
+  try {
+    const cars = await fetch("/api/my-cars").then(r => r.json());
+    const el = document.getElementById("cars-list");
+    if (!cars.length) {
+      el.innerHTML = '<div class="cars-empty">No saved cars yet — look up a VIN below</div>';
+      return;
+    }
+    el.innerHTML = cars.map(c => `
+      <div class="car-card" onclick="loadSavedCar(${JSON.stringify(c).replace(/"/g,'&quot;')})">
+        <button class="car-card-del" onclick="event.stopPropagation(); deleteCar('${c.vin}')" title="Remove">×</button>
+        <div class="car-card-make">${c.make || "Unknown"}</div>
+        <div class="car-card-model">${c.model || ""}</div>
+        <div class="car-card-year">${c.year || ""} · ${c.engine || ""}</div>
+        ${c.recent_parts?.length ? `<div class="car-card-parts">Recent: ${c.recent_parts.slice(0,2).join(", ")}</div>` : ""}
+      </div>
+    `).join("");
+  } catch(e) {}
+}
+
+async function deleteCar(vin) {
+  await fetch("/api/delete-car", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({vin})});
+  loadMyCars();
+}
+
+function loadSavedCar(car) {
+  document.getElementById("vin-input").value = car.vin || "";
+  document.getElementById("country-select").value = car.country || "FI";
+  currentCar = car;
+  showCarResult(car);
+  showError("vin-error", "");
+  // Show recent parts
+  showRecentParts(car.recent_parts || []);
+}
+
+// ── VIN Lookup ─────────────────────────────────────────────────
+document.getElementById("btn-lookup").addEventListener("click", doVinLookup);
+document.getElementById("vin-input").addEventListener("keydown", e => { if (e.key === "Enter") doVinLookup(); });
+
+async function doVinLookup() {
+  const vin = document.getElementById("vin-input").value.trim().toUpperCase();
+  const country = document.getElementById("country-select").value;
+  if (!vin) { showError("vin-error", "Please enter a VIN code"); return; }
+  if (vin.length !== 17) { showError("vin-error", "VIN must be exactly 17 characters"); return; }
+
+  showError("vin-error", "");
+  document.getElementById("btn-lookup").disabled = true;
+  document.getElementById("btn-lookup").textContent = "Looking up…";
+  loading(true, "Decoding VIN…");
+
+  try {
+    const car = await api("/api/lookup-vin", {vin, country});
+    currentCar = car;
+    showCarResult(car);
+    loadMyCars();
+  } catch(e) {
+    showError("vin-error", e.message);
+  } finally {
+    document.getElementById("btn-lookup").disabled = false;
+    document.getElementById("btn-lookup").textContent = "Look up vehicle";
+    loading(false);
+  }
+}
+
+function showCarResult(car) {
+  const make  = car.make  || "Unknown";
+  const model = car.model || "";
+  const year  = car.year  || "";
+  const eng   = car.engine || "";
+  const fuel  = car.fuel  || "";
+
+  document.getElementById("car-name").textContent  = `${make} ${model}`;
+  document.getElementById("car-detail").textContent = [year, eng, fuel].filter(Boolean).join(" · ");
+  document.getElementById("car-vin-display").textContent = `VIN: ${car.vin || ""}`;
+
+  const conf = car.confidence || "low";
+  const badge = document.getElementById("car-confidence");
+  badge.textContent = conf.toUpperCase();
+  badge.className = `confidence-badge confidence-${conf === "high" ? "high" : "low"}`;
+
+  document.getElementById("car-result").classList.add("show");
+  document.getElementById("part-block").classList.add("show");
+  document.getElementById("results").classList.remove("show");
+
+  // Show recent parts for this car
+  showRecentParts(car.recent_parts || []);
+}
+
+function showRecentParts(parts) {
+  const el = document.getElementById("recent-parts");
+  if (!parts.length) { el.innerHTML = ""; return; }
+  el.innerHTML = "<span style='font-size:11px;color:var(--text-3);width:100%'>Recent:</span>" +
+    parts.map(p => `<span class="recent-chip" onclick="setPartAndSearch('${p}')">${p}</span>`).join("");
+}
+
+function setPartAndSearch(part) {
+  document.getElementById("part-input").value = part;
+  doPartSearch();
+}
+
+// ── Part Search ────────────────────────────────────────────────
+document.getElementById("btn-search").addEventListener("click", doPartSearch);
+document.getElementById("part-input").addEventListener("keydown", e => { if (e.key === "Enter") doPartSearch(); });
+
+async function doPartSearch() {
+  if (!currentCar) { toast("Look up a vehicle first"); return; }
+  let part = document.getElementById("part-input").value.trim();
+  if (!part) return;
+
+  // Check if clarification needed
+  const cl = needsClarify(part);
+  if (cl && !clarifyMode) {
+    clarifyMode = cl;
+    const prompt = document.getElementById("clarify-prompt");
+    prompt.innerHTML = `<b>📍 ${cl.q}</b><br><small style="color:var(--text-3);margin-top:4px;display:block">Type your answer and press Search again</small>`;
+    prompt.classList.add("show");
+    document.getElementById("part-input").focus();
+    return;
+  }
+
+  // If clarifying, prepend clarification
+  if (clarifyMode) {
+    document.getElementById("clarify-prompt").classList.remove("show");
+    clarifyMode = null;
+  }
+
+  await runPartLookup(part);
+}
+
+async function runPartLookup(part) {
+  loading(true, "Searching OEM numbers…");
+  document.getElementById("results").classList.remove("show");
+  document.getElementById("btn-search").disabled = true;
+
+  try {
+    // Fetch part info first (includes OEM numbers)
+    loading(true, "Getting part info & OEM numbers…");
+    const info = await api("/api/part-info", {part, car: currentCar});
+    currentPartInfo = info;
+    showPartHeader(info, part);
+
+    // Fetch rest in parallel
+    loading(true, "Fetching prices, videos & diagrams…");
+    const [prices, videos, diagrams, partImg] = await Promise.allSettled([
+      api("/api/prices",    {part, car: currentCar, part_info: info}),
+      api("/api/youtube",   {part, car: currentCar}),
+      api("/api/diagrams",  {part, car: currentCar}),
+      api("/api/part-image",{part, car: currentCar}),
+    ]);
+
+    renderPrices(prices.status === "fulfilled" ? prices.value : []);
+    renderVideos(videos.status === "fulfilled" ? videos.value : []);
+    renderDiagrams(diagrams.status === "fulfilled" ? diagrams.value : {urls:[]});
+    if (partImg.status === "fulfilled" && partImg.value.url) {
+      setPartImage(partImg.value.url);
+    }
+
+    document.getElementById("results").classList.add("show");
+    document.getElementById("results").scrollIntoView({behavior: "smooth", block: "start"});
+
+  } catch(e) {
+    toast("Error: " + e.message);
+  } finally {
+    loading(false);
+    document.getElementById("btn-search").disabled = false;
+  }
+}
+
+// ── Render Part Header ─────────────────────────────────────────
+function showPartHeader(info, rawPart) {
+  document.getElementById("result-part-name").textContent = info.canonical_name || rawPart;
+  document.getElementById("result-desc").textContent = info.description || "";
+
+  const meta = document.getElementById("result-meta");
+  meta.innerHTML = "";
+  if (info.difficulty) meta.innerHTML += `<span class="meta-chip">⚡ <span>${info.difficulty}</span></span>`;
+  if (info.avg_labor_hours) meta.innerHTML += `<span class="meta-chip">⏱ <span>${info.avg_labor_hours}</span></span>`;
+
+  // Part numbers
+  const nums = info.part_numbers || [];
+  const pnList = document.getElementById("part-numbers-list");
+  if (nums.length) {
+    pnList.innerHTML = nums.map(p => {
+      const num   = typeof p === "object" ? p.number : p;
+      const brand = typeof p === "object" ? (p.brand || "") : "";
+      const type  = typeof p === "object" ? (p.type  || "OEM") : "OEM";
+      const isOEM = type.toUpperCase().includes("OEM");
+      return `
+        <div class="pn-row">
+          <span class="pn-type ${isOEM ? 'oem' : 'aftermarket'}">${type}</span>
+          <span class="pn-number">${num}</span>
+          <span class="pn-brand">${brand}</span>
+          <span class="pn-copy" onclick="copyText('${num}')" title="Copy">⧉</span>
+        </div>`;
+    }).join("");
+    document.getElementById("part-numbers-block").style.display = "";
+  } else {
+    document.getElementById("part-numbers-block").style.display = "none";
+  }
+
+  // Guide
+  const tools = info.tools_needed || [];
+  const toolsBox = document.getElementById("tools-box");
+  if (tools.length) {
+    document.getElementById("tools-list").innerHTML = tools.map(t => `<span class="tool-chip">${t}</span>`).join("");
+    toolsBox.style.display = "";
+  } else {
+    toolsBox.style.display = "none";
+  }
+
+  const guide = document.getElementById("guide-steps");
+  const steps = (info.replacement_summary || "").split("\n").filter(l => l.trim());
+  guide.innerHTML = steps.length ? steps.map(line => {
+    const m = line.match(/^(\d+)\.\s*(.*)/);
+    if (m) return `<div class="guide-step"><div class="step-num">${m[1]}</div><div class="step-text">${m[2]}</div></div>`;
+    const isSub = /^[a-z•\-\*]/.test(line.trim());
+    return `<div class="guide-step"><div class="step-num" style="visibility:hidden">·</div><div class="step-text step-sub">${line.trim()}</div></div>`;
+  }).join("") : '<div class="empty-state"><div class="empty-icon">📋</div>No guide available</div>';
+
+  if (info.oem_note) {
+    guide.insertAdjacentHTML("beforeend", `<p style="font-size:12px;color:var(--text-3);margin-top:12px;padding:0 4px">${info.oem_note}</p>`);
+  }
+}
+
+function setPartImage(url) {
+  const wrap = document.getElementById("part-image-wrap");
+  wrap.outerHTML = `<img class="part-image" id="part-image-wrap" src="${url}" alt="Part" onerror="this.style.display='none'">`;
+}
+
+// ── Render Prices ──────────────────────────────────────────────
+function renderPrices(prices) {
+  const el = document.getElementById("prices-list");
+  if (!prices.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💶</div>No prices found</div>';
+    return;
+  }
+
+  const priced = prices.filter(p => p.price != null);
+  const cheapest = priced.length ? priced.reduce((a, b) => a.price < b.price ? a : b) : null;
+
+  el.innerHTML = prices.map(p => {
+    const isBest = cheapest && p.shop === cheapest.shop;
+    const priceStr = p.price != null ? `€${p.price.toFixed(2)}` : "See site";
+    const ship = p.shipping && p.shipping !== "—" ? p.shipping : "";
+    return `
+      <a href="${p.url || '#'}" target="_blank" rel="noopener" class="price-card ${isBest ? 'best' : ''}">
+        <div class="price-shop">
+          <div class="price-shop-name">${p.shop}${isBest ? '<span class="best-badge">CHEAPEST</span>' : ''}</div>
+          ${p.part ? `<div class="price-shop-part">${p.part}</div>` : ""}
+          ${ship ? `<div class="price-shipping">🚚 ${ship}</div>` : ""}
+        </div>
+        <div class="price-amount ${p.price == null ? 'no-price' : ''}">${priceStr}</div>
+      </a>`;
+  }).join("");
+}
+
+// ── Render Videos ──────────────────────────────────────────────
+function renderVideos(videos) {
+  const el = document.getElementById("videos-list");
+  if (!videos.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">▶️</div>No videos found</div>';
+    return;
+  }
+  el.innerHTML = videos.map(v => {
+    const vidId = v.url?.match(/v=([^&]+)/)?.[1] || "";
+    const thumb = vidId ? `https://img.youtube.com/vi/${vidId}/mqdefault.jpg` : "";
+    return `
+      <a href="${v.url}" target="_blank" rel="noopener" class="video-card">
+        <div class="video-thumb">${thumb ? `<img src="${thumb}" alt="">` : "▶"}</div>
+        <div>
+          <div class="video-title">${v.title}</div>
+          <div class="video-channel">YouTube</div>
+        </div>
+      </a>`;
+  }).join("");
+}
+
+// ── Render Diagrams ────────────────────────────────────────────
+function renderDiagrams(data) {
+  const el = document.getElementById("diagrams-content");
+  const urls = data.urls || [];
+  const car = currentCar || {};
+  const part = document.getElementById("part-input").value;
+  const q = encodeURIComponent(`${car.make||""} ${car.model||""} ${part} exploded view diagram`);
+  const gLink = `https://www.google.com/search?tbm=isch&q=${q}`;
+
+  let html = urls.map(url => `<img class="diagram-img" src="${url}" alt="Diagram" onerror="this.style.display='none'">`).join("");
+  html += `
+    <a href="${gLink}" target="_blank" class="diagram-link">
+      <span class="diagram-link-icon">🖼</span>
+      Search Google Images for more diagrams
+    </a>`;
+  el.innerHTML = html;
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+// ── Init ───────────────────────────────────────────────────────
+loadMyCars();
+</script>
+</body>
+</html>

@@ -179,7 +179,7 @@ GROQ_URL      = "https://api.groq.com/openai/v1/chat/completions"
 
 def _call_anthropic(prompt: str, system: str, max_tokens: int) -> str:
     if not ANTHROPIC_API_KEY:
-        return "[ANTHROPIC_API_KEY not set]"
+        raise Exception("ANTHROPIC_API_KEY not set")
     headers = {
         "x-api-key": ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
@@ -199,7 +199,7 @@ def _call_anthropic(prompt: str, system: str, max_tokens: int) -> str:
 
 def _call_groq(prompt: str, system: str, max_tokens: int) -> str:
     if not GROQ_API_KEY:
-        return "[GROQ_API_KEY not set]"
+        raise Exception("GROQ_API_KEY not set")
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json",
@@ -233,7 +233,7 @@ def _call_groq(prompt: str, system: str, max_tokens: int) -> str:
 
 def _call_gemini(prompt: str, system: str, max_tokens: int) -> str:
     if not GEMINI_API_KEY:
-        return "[GEMINI_API_KEY not set]"
+        raise Exception("GEMINI_API_KEY not set")
     url = GEMINI_URL.format(model=GEMINI_MODEL, key=GEMINI_API_KEY)
     body = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -287,9 +287,6 @@ def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
             continue
         try:
             result = fn(prompt, system, max_tokens)
-            # Don't count rate limit errors as success
-            if "429" in result or "Rate limit" in result:
-                raise Exception(result[:100])
             return result
         except Exception as err:
             last_err = err
@@ -1474,10 +1471,15 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
     )
     raw = claude(prompt, system=system, max_tokens=2500)
     # Check for API errors before parsing
-    if raw.startswith("[AI error:"):
-        if "429" in raw or "rate limit" in raw.lower() or "Too Many" in raw:
-            return {"error": "Groq-päivittäinen raja ylitetty. Yritä uudelleen huomenna." if True else "Daily Groq limit reached. Try again tomorrow.", "levels": [], "cosmetics": [], "summary": ""}
-        return {"error": raw[:200], "levels": [], "cosmetics": [], "summary": ""}
+    if raw.startswith("[AI error:") or raw.startswith("[GROQ") or raw.startswith("[GEMINI"):
+        is_rate_limit = "429" in raw or "rate limit" in raw.lower() or "Too Many" in raw
+        if is_rate_limit:
+            msg = ("Päivittäinen AI-raja ylitetty. Lisää GEMINI_API_KEY Render-asetuksiin tai yritä huomenna."
+                   if lang == "fi" else
+                   "Daily AI limit reached. Add GEMINI_API_KEY to Render settings or try tomorrow.")
+        else:
+            msg = raw[:200]
+        return {"error": msg, "levels": [], "cosmetics": [], "summary": ""}
     try:
         import re as _re, json as _json
         s = _re.sub(r'```json|```', '', raw).strip()

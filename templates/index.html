@@ -158,6 +158,7 @@ input,select{font-family:inherit}
 .guide-step:last-child{border-bottom:none}
 .step-num{width:28px;height:28px;background:var(--amber-glow);border:1px solid var(--amber-dim);border-radius:50%;color:var(--amber);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .step-text{font-size:15px;line-height:1.7}
+.step-icon{width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:5px}
 
 /* Prices */
 .price-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;text-decoration:none;transition:border-color .15s}
@@ -192,6 +193,17 @@ input,select{font-family:inherit}
 .toast.show{transform:translateX(-50%) translateY(0)}
 
 @media(max-width:380px){.part-img-wrap{width:72px;height:72px}.part-name{font-size:19px}}
+.ac-wrap{position:relative}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--amber);border-radius:var(--rs);z-index:200;display:none;box-shadow:0 4px 20px rgba(0,0,0,.4);max-height:180px;overflow-y:auto}
+.ac-list.open{display:block}
+.ac-item{padding:10px 14px;font-size:14px;cursor:pointer;color:var(--text);border-bottom:1px solid var(--border)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover,.ac-item.sel{background:var(--amber-glow);color:var(--amber)}
+.field-hint{font-size:11px;margin-top:4px;min-height:16px;padding:0 2px}
+.hint-ok{color:#22c55e}
+.hint-warn{color:#f59e0b}
+.hint-err{color:#ef4444}
+.manual-preview{background:var(--amber-glow);border:1px solid var(--amber-dim);border-radius:var(--rs);padding:10px 14px;margin-bottom:12px;font-size:14px;font-weight:600;color:var(--amber)}
 .diagram-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
 .diagram-thumb{border-radius:var(--rs);overflow:hidden;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:border-color .15s}
 .diagram-thumb:hover,.diagram-thumb:active{border-color:var(--amber)}
@@ -298,14 +310,35 @@ input,select{font-family:inherit}
 
     <!-- Manual mode -->
     <div id="mode-manual" style="display:none">
+      <!-- Make with autocomplete -->
       <div class="row">
-        <div class="field"><label id="lbl-make">Merkki</label><input id="m-make" placeholder="esim. Saab"></div>
-        <div class="field"><label id="lbl-model">Malli</label><input id="m-model" placeholder="esim. 9-5"></div>
+        <div class="field ac-wrap" style="flex:2">
+          <label id="lbl-make">Merkki</label>
+          <input id="m-make" placeholder="esim. Saab" autocomplete="off" oninput="acMake(this)">
+          <div class="ac-list" id="ac-make"></div>
+          <div class="field-hint" id="hint-make"></div>
+        </div>
+        <div class="field" style="flex:1">
+          <label id="lbl-year">Vuosi</label>
+          <input id="m-year" type="number" placeholder="2007" min="1970" max="2025" oninput="validateYear(this)">
+          <div class="field-hint" id="hint-year"></div>
+        </div>
       </div>
+      <!-- Model with autocomplete -->
       <div class="row">
-        <div class="field"><label id="lbl-year">Vuosi</label><input id="m-year" type="number" placeholder="2007"></div>
-        <div class="field"><label id="lbl-engine">Moottori</label><input id="m-engine" placeholder="esim. 2.3T"></div>
+        <div class="field ac-wrap" style="flex:2">
+          <label id="lbl-model">Malli</label>
+          <input id="m-model" placeholder="esim. 9-5" autocomplete="off" oninput="acModel(this)">
+          <div class="ac-list" id="ac-model"></div>
+          <div class="field-hint" id="hint-model"></div>
+        </div>
+        <div class="field" style="flex:1">
+          <label id="lbl-engine">Moottori</label>
+          <input id="m-engine" placeholder="esim. 2.3T" oninput="validateEngine(this)">
+          <div class="field-hint" id="hint-engine"></div>
+        </div>
       </div>
+      <!-- Fuel & Transmission -->
       <div class="row">
         <div class="field">
           <label id="lbl-fuel">Polttoaine</label>
@@ -315,6 +348,7 @@ input,select{font-family:inherit}
             <option value="Diesel">Diesel</option>
             <option value="Electric">Sähkö</option>
             <option value="Hybrid">Hybridi</option>
+            <option value="Plug-in Hybrid">Ladattava hybridi</option>
           </select>
         </div>
         <div class="field">
@@ -323,9 +357,12 @@ input,select{font-family:inherit}
             <option value="">Valitse...</option>
             <option value="Manual">Manuaali</option>
             <option value="Automatic">Automaatti</option>
+            <option value="Semi-automatic">Puoliautomaatti</option>
+            <option value="CVT">CVT</option>
           </select>
         </div>
       </div>
+      <!-- Body & Region -->
       <div class="row">
         <div class="field">
           <label id="lbl-body">Korimalli</label>
@@ -337,19 +374,25 @@ input,select{font-family:inherit}
             <option value="SUV">SUV</option>
             <option value="Coupe">Coupe</option>
             <option value="Convertible">Avoauto</option>
+            <option value="Van">Pakettiauto</option>
+            <option value="Pickup">Pickup</option>
           </select>
         </div>
         <div class="field">
           <label id="lbl-region2">Alue</label>
           <select id="m-country">
-            <option value="FI">🇫🇮 FI</option>
-            <option value="SE">🇸🇪 SE</option>
-            <option value="NO">🇳🇴 NO</option>
-            <option value="DE">🇩🇪 DE</option>
-            <option value="GB">🇬🇧 GB</option>
-            <option value="US">🇺🇸 US</option>
+            <option value="FI">FI</option>
+            <option value="SE">SE</option>
+            <option value="NO">NO</option>
+            <option value="DE">DE</option>
+            <option value="GB">GB</option>
+            <option value="US">US</option>
           </select>
         </div>
+      </div>
+      <!-- Live preview -->
+      <div class="manual-preview" id="manual-preview" style="display:none">
+        <span id="preview-text"></span>
       </div>
       <button class="btn-primary" id="btn-manual">Tallenna auto</button>
     </div>
@@ -440,6 +483,72 @@ input,select{font-family:inherit}
 <div class="toast" id="toast"></div>
 
 <script>
+// ── Step icons ───────────────────────────────────────────────
+var STEP_ICONS = {
+  // Safety / setup
+  safety:   '<svg viewBox="0 0 36 36" fill="none"><path d="M18 4L6 9v10c0 7 5.4 13.5 12 15.3C24.6 32.5 30 26 30 19V9L18 4z" fill="#f59e0b" opacity=".18" stroke="#f59e0b" stroke-width="1.5"/><text x="18" y="23" text-anchor="middle" font-size="14" fill="#f59e0b" font-weight="700">!</text></svg>',
+  // Jack / lift
+  lift:     '<svg viewBox="0 0 36 36" fill="none"><rect x="4" y="26" width="28" height="4" rx="2" fill="#888"/><rect x="13" y="10" width="10" height="16" rx="2" fill="#aaa"/><path d="M10 10 L18 4 L26 10" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="7" y="26" width="5" height="5" rx="1" fill="#666"/><rect x="24" y="26" width="5" height="5" rx="1" fill="#666"/></svg>',
+  // Wheel / tyre
+  wheel:    '<svg viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="13" stroke="#aaa" stroke-width="2.5"/><circle cx="18" cy="18" r="5" fill="#888"/><line x1="18" y1="5" x2="18" y2="13" stroke="#aaa" stroke-width="1.5"/><line x1="18" y1="23" x2="18" y2="31" stroke="#aaa" stroke-width="1.5"/><line x1="5" y1="18" x2="13" y2="18" stroke="#aaa" stroke-width="1.5"/><line x1="23" y1="18" x2="31" y2="18" stroke="#aaa" stroke-width="1.5"/></svg>',
+  // Wrench / bolt
+  wrench:   '<svg viewBox="0 0 36 36" fill="none"><path d="M23 5a8 8 0 0 1 1 11l-9 9a3 3 0 0 1-4-4l9-9A8 8 0 0 1 23 5z" fill="#aaa"/><rect x="4" y="24" width="12" height="6" rx="2" fill="#888" transform="rotate(-45 10 27)"/></svg>',
+  // Disconnect / unplug
+  disconnect: '<svg viewBox="0 0 36 36" fill="none"><path d="M8 18 L16 18" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/><path d="M20 18 L28 18" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="18" r="3" fill="#ef4444"/><circle cx="20" cy="18" r="3" fill="#ef4444"/><line x1="12" y1="12" x2="24" y2="24" stroke="#ef4444" stroke-width="1.5" opacity=".4"/></svg>',
+  // Torque wrench
+  torque:   '<svg viewBox="0 0 36 36" fill="none"><path d="M8 28 L22 14" stroke="#aaa" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="12" r="5" stroke="#f59e0b" stroke-width="2" fill="none"/><path d="M22 8 L26 8" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/><text x="24" y="14" text-anchor="middle" font-size="6" fill="#f59e0b" font-weight="700">Nm</text></svg>',
+  // Press / push
+  press:    '<svg viewBox="0 0 36 36" fill="none"><rect x="12" y="4" width="12" height="8" rx="2" fill="#888"/><rect x="16" y="12" width="4" height="14" fill="#aaa"/><path d="M10 26 L26 26 L22 32 L14 32 Z" fill="#888"/><path d="M14 20 L8 20 M22 20 L28 20" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  // Lubricate / grease
+  lube:     '<svg viewBox="0 0 36 36" fill="none"><path d="M14 6 L14 22 Q14 28 20 28 Q26 28 26 22 L26 16" stroke="#f59e0b" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="26" cy="12" r="4" fill="#f59e0b" opacity=".6"/><path d="M8 18 Q11 14 8 10" stroke="#f59e0b" stroke-width="1.5" fill="none" opacity=".5"/></svg>',
+  // Inspect / check
+  inspect:  '<svg viewBox="0 0 36 36" fill="none"><circle cx="16" cy="16" r="9" stroke="#aaa" stroke-width="2"/><line x1="23" y1="23" x2="30" y2="30" stroke="#aaa" stroke-width="2.5" stroke-linecap="round"/><line x1="12" y1="16" x2="16" y2="20" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="20" x2="21" y2="13" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/></svg>',
+  // Align
+  align:    '<svg viewBox="0 0 36 36" fill="none"><line x1="18" y1="4" x2="18" y2="32" stroke="#aaa" stroke-width="1.5" stroke-dasharray="3,2"/><line x1="4" y1="18" x2="32" y2="18" stroke="#aaa" stroke-width="1.5" stroke-dasharray="3,2"/><circle cx="18" cy="18" r="5" stroke="#f59e0b" stroke-width="2" fill="none"/><circle cx="18" cy="18" r="1.5" fill="#f59e0b"/></svg>',
+  // Clean / wash
+  clean:    '<svg viewBox="0 0 36 36" fill="none"><path d="M8 28 Q18 18 28 28" stroke="#aaa" stroke-width="2" fill="none"/><path d="M10 22 Q12 16 18 12 Q24 16 26 22" stroke="#aaa" stroke-width="1.5" fill="none"/><path d="M14 16 Q16 10 18 8 Q20 10 22 16" stroke="#aaa" stroke-width="1" fill="none"/></svg>',
+  // Install / place
+  install:  '<svg viewBox="0 0 36 36" fill="none"><rect x="10" y="16" width="16" height="12" rx="2" fill="#22c55e" opacity=".2" stroke="#22c55e" stroke-width="1.5"/><path d="M18 4 L18 16" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/><path d="M13 11 L18 16 L23 11" stroke="#22c55e" stroke-width="2" stroke-linecap="round" fill="none"/></svg>',
+  // Reassemble
+  reassemble: '<svg viewBox="0 0 36 36" fill="none"><path d="M18 6 A12 12 0 0 1 30 18" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M30 18 A12 12 0 0 1 6 18" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M6 18 A12 12 0 0 1 14 7" stroke="#f59e0b" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M26 12 L30 18 L24 18" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
+  // Test drive
+  test:     '<svg viewBox="0 0 36 36" fill="none"><path d="M6 22 Q8 14 18 12 Q28 14 30 22" stroke="#aaa" stroke-width="2" fill="none"/><circle cx="11" cy="24" r="4" stroke="#aaa" stroke-width="2" fill="none"/><circle cx="25" cy="24" r="4" stroke="#aaa" stroke-width="2" fill="none"/><path d="M15 24 L21 24" stroke="#aaa" stroke-width="1.5"/><path d="M22 18 L26 14" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  // Default tool
+  default:  '<svg viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="12" stroke="#666" stroke-width="1.5" fill="none"/><text x="18" y="23" text-anchor="middle" font-size="14" fill="#888" font-weight="600">✦</text></svg>',
+};
+
+// Keyword -> icon mapping
+var STEP_KEYWORDS = [
+  [['safety','safe','protect','chock','parking','brake','handbrake','hazard','eye','gloves','caution','varoitus','turvallisuus','jarruta','käsijarru'], 'safety'],
+  [['jack','lift','raise','support','stand','axle stand','hoist','nostaa','tunkit','nosta','tuki'], 'lift'],
+  [['wheel','tyre','tire','pyörä','rengas','vanne','lug','nut','rim'], 'wheel'],
+  [['torque','tighten','nm','newton','spec','kiristä','momentti','kireyteen'], 'torque'],
+  [['remove','unscrew','unbolt','disconnect','detach','pull out','take off','loosen','irrota','poista','avaa','löysää','erota'], 'disconnect'],
+  [['press','push','force','drive out','hammer','puristin','paina','lyö','ajaa ulos'], 'press'],
+  [['grease','lubricate','oil','lube','anti-seize','copper','molybdenum','rasva','voitele','öljy'], 'lube'],
+  [['inspect','check','look','verify','ensure','examine','test fit','tarkasta','tarkista','varmista','katso'], 'inspect'],
+  [['align','alignment','camber','toe','tracking','kohdista','suunta','asennus'], 'align'],
+  [['clean','wash','wipe','degrease','rust','puhdista','pese','kuivaa'], 'clean'],
+  [['install','insert','place','slide','fit','put','mount','position','asenna','aseta','laita','kiinnitä'], 'install'],
+  [['reassemble','refit','replace','reverse','rebuild','kokoa','uudelleen','palauta','kiinnitä takaisin'], 'reassemble'],
+  [['test','drive','road test','check operation','verify operation','koeaja','testaa','kokeile','ajoa'], 'test'],
+  [['bolt','screw','fasten','attach','hand tight','ruuvi','pultti','kiinni','mutteri'], 'wrench'],
+];
+
+function getStepIcon(text) {
+  var low = text.toLowerCase();
+  for (var i = 0; i < STEP_KEYWORDS.length; i++) {
+    var keywords = STEP_KEYWORDS[i][0];
+    var iconKey  = STEP_KEYWORDS[i][1];
+    for (var j = 0; j < keywords.length; j++) {
+      if (low.includes(keywords[j])) {
+        return STEP_ICONS[iconKey];
+      }
+    }
+  }
+  return STEP_ICONS.default;
+}
+
 // ── Helpers ───────────────────────────────────────────────────
 function hideEl(el) { if (el) el.style.display = 'none'; }
 
@@ -727,6 +836,218 @@ function doVinLookup() {
 }
 
 // ── Manual entry ───────────────────────────────────────────────
+// ── Car database for autocomplete ─────────────────────────────
+var CAR_DB = {
+  'Saab':       ['9-3','9-5','9-7X','900','9000','9-4X'],
+  'Volvo':      ['V40','V50','V60','V70','V90','S40','S60','S80','S90','XC40','XC60','XC70','XC90','C30','C70'],
+  'Toyota':     ['Yaris','Corolla','Camry','Auris','Avensis','RAV4','Land Cruiser','Hilux','Prius','C-HR','Aygo','Verso','Proace'],
+  'Volkswagen': ['Golf','Polo','Passat','Tiguan','T-Roc','Touareg','Sharan','Touran','Caddy','Transporter','Arteon','ID.3','ID.4'],
+  'BMW':        ['1-sarja','2-sarja','3-sarja','4-sarja','5-sarja','6-sarja','7-sarja','X1','X2','X3','X4','X5','X6','Z4','i3','i4'],
+  'Mercedes-Benz': ['A-sarja','B-sarja','C-sarja','E-sarja','S-sarja','CLA','GLA','GLC','GLE','GLS','Vito','Sprinter'],
+  'Audi':       ['A1','A2','A3','A4','A5','A6','A7','A8','Q2','Q3','Q5','Q7','Q8','TT','R8'],
+  'Ford':       ['Fiesta','Focus','Mondeo','Puma','Kuga','Edge','S-Max','Galaxy','Transit','EcoSport','Mustang'],
+  'Opel':       ['Corsa','Astra','Insignia','Mokka','Crossland','Grandland','Zafira','Meriva','Antara','Vectra'],
+  'Skoda':      ['Fabia','Octavia','Superb','Karoq','Kodiaq','Kamiq','Scala','Enyaq'],
+  'Renault':    ['Clio','Megane','Laguna','Scenic','Kadjar','Captur','Koleos','Trafic','Master','Zoe'],
+  'Peugeot':    ['208','308','508','2008','3008','5008','Partner','Expert','Boxer'],
+  'Citroen':    ['C1','C2','C3','C4','C5','Berlingo','Jumpy','C3 Aircross','C5 Aircross'],
+  'Fiat':       ['500','Punto','Panda','Tipo','Bravo','Doblo','Ducato'],
+  'Honda':      ['Jazz','Civic','Accord','CR-V','HR-V','FR-V'],
+  'Nissan':     ['Micra','Note','Juke','Qashqai','X-Trail','Navara','Leaf','Ariya'],
+  'Hyundai':    ['i10','i20','i30','i40','Tucson','Santa Fe','Ioniq','Kona','ix35'],
+  'Kia':        ['Picanto','Rio','Ceed','Stinger','Sportage','Sorento','Telluride','EV6','Niro'],
+  'Mazda':      ['Mazda2','Mazda3','Mazda6','CX-3','CX-5','CX-60','MX-5'],
+  'Mitsubishi': ['Colt','Carisma','Lancer','Outlander','ASX','Eclipse Cross','L200','Pajero'],
+  'Subaru':     ['Impreza','Legacy','Outback','Forester','XV','BRZ'],
+  'Suzuki':     ['Swift','Vitara','S-Cross','Jimny','Baleno','Ignis'],
+  'Seat':       ['Ibiza','Leon','Ateca','Arona','Tarraco','Alhambra'],
+  'Land Rover': ['Defender','Discovery','Discovery Sport','Freelander','Range Rover','Range Rover Sport','Evoque'],
+  'Jeep':       ['Renegade','Compass','Cherokee','Grand Cherokee','Wrangler'],
+  'Lexus':      ['IS','ES','GS','LS','UX','NX','RX','GX','LX'],
+  'Alfa Romeo': ['147','156','159','Giulia','Stelvio','Mito','Giulietta'],
+  'Porsche':    ['911','Cayenne','Macan','Panamera','Taycan','Boxster','Cayman'],
+  'Dacia':      ['Sandero','Logan','Duster','Lodgy','Dokker'],
+};
+
+var MAKES = Object.keys(CAR_DB).sort();
+
+// ── Autocomplete engine ────────────────────────────────────────
+var acActiveIndex = -1;
+
+function showAcList(id, items, onSelect) {
+  var list = document.getElementById(id);
+  if (!items.length) { list.classList.remove('open'); return; }
+  list.innerHTML = items.slice(0,8).map(function(item, i) {
+    return '<div class="ac-item" data-val="'+item+'" onclick="selectAc(''+id+'',''+item+'')">'+item+'</div>';
+  }).join('');
+  list.classList.add('open');
+}
+
+function selectAc(listId, val) {
+  var list = document.getElementById(listId);
+  list.classList.remove('open');
+  if (listId === 'ac-make') {
+    document.getElementById('m-make').value = val;
+    document.getElementById('m-model').focus();
+    validateMake(document.getElementById('m-make'));
+    acModel(document.getElementById('m-model'));
+  } else if (listId === 'ac-model') {
+    document.getElementById('m-model').value = val;
+    document.getElementById('m-year').focus();
+    validateModel(document.getElementById('m-model'));
+  }
+  updatePreview();
+}
+
+function closeAllAc() {
+  document.querySelectorAll('.ac-list').forEach(function(l){ l.classList.remove('open'); });
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.ac-wrap')) closeAllAc();
+});
+
+// ── Make autocomplete ──────────────────────────────────────────
+function acMake(input) {
+  var val = input.value.trim();
+  validateMake(input);
+  if (val.length < 1) { closeAllAc(); updatePreview(); return; }
+  var matches = MAKES.filter(function(m) {
+    return m.toLowerCase().startsWith(val.toLowerCase());
+  });
+  if (!matches.length) {
+    matches = MAKES.filter(function(m) {
+      return m.toLowerCase().includes(val.toLowerCase());
+    });
+  }
+  showAcList('ac-make', matches);
+  // Auto-fill if exact match
+  if (matches.length === 1 && matches[0].toLowerCase() === val.toLowerCase()) {
+    document.getElementById('m-make').value = matches[0];
+    closeAllAc();
+  }
+  updatePreview();
+}
+
+function validateMake(input) {
+  var val = input.value.trim();
+  var hint = document.getElementById('hint-make');
+  if (!val) { hint.textContent = ''; hint.className = 'field-hint'; return; }
+  var exact = MAKES.find(function(m){ return m.toLowerCase() === val.toLowerCase(); });
+  if (exact) {
+    input.value = exact;
+    hint.textContent = 'Tunnettu merkki';
+    hint.className = 'field-hint hint-ok';
+  } else {
+    var close = MAKES.filter(function(m){ return m.toLowerCase().startsWith(val.toLowerCase()); });
+    if (close.length) {
+      hint.textContent = 'Tarkoititko: ' + close[0] + '?';
+      hint.className = 'field-hint hint-warn';
+    } else {
+      hint.textContent = 'Merkki hyväksytty';
+      hint.className = 'field-hint hint-ok';
+    }
+  }
+}
+
+// ── Model autocomplete ─────────────────────────────────────────
+function acModel(input) {
+  var make = document.getElementById('m-make').value.trim();
+  var val = input.value.trim();
+  validateModel(input);
+  // Find closest make key
+  var makeKey = MAKES.find(function(m){ return m.toLowerCase() === make.toLowerCase(); });
+  var models = makeKey ? CAR_DB[makeKey] : [];
+  if (val.length < 1) { closeAllAc(); updatePreview(); return; }
+  var matches = models.filter(function(m){
+    return m.toLowerCase().startsWith(val.toLowerCase()) || m.toLowerCase().includes(val.toLowerCase());
+  });
+  showAcList('ac-model', matches);
+  updatePreview();
+}
+
+function validateModel(input) {
+  var val = input.value.trim();
+  var make = document.getElementById('m-make').value.trim();
+  var hint = document.getElementById('hint-model');
+  if (!val) { hint.textContent = ''; hint.className = 'field-hint'; return; }
+  var makeKey = MAKES.find(function(m){ return m.toLowerCase() === make.toLowerCase(); });
+  var models = makeKey ? CAR_DB[makeKey] : [];
+  var exact = models.find(function(m){ return m.toLowerCase() === val.toLowerCase(); });
+  if (exact) {
+    hint.textContent = 'Tunnettu malli';
+    hint.className = 'field-hint hint-ok';
+  } else if (models.length) {
+    hint.textContent = 'Malli hyväksytty';
+    hint.className = 'field-hint hint-ok';
+  } else {
+    hint.textContent = '';
+    hint.className = 'field-hint';
+  }
+}
+
+// ── Year validation ────────────────────────────────────────────
+function validateYear(input) {
+  var val = parseInt(input.value);
+  var hint = document.getElementById('hint-year');
+  if (!input.value) { hint.textContent = ''; hint.className = 'field-hint'; updatePreview(); return; }
+  var now = new Date().getFullYear();
+  if (val < 1970 || val > now) {
+    hint.textContent = 'Vuosi ' + 1970 + '–' + now;
+    hint.className = 'field-hint hint-err';
+    input.style.borderColor = 'var(--red)';
+  } else if (val < 1990) {
+    hint.textContent = 'Vanha auto — varaosien saatavuus voi olla rajattu';
+    hint.className = 'field-hint hint-warn';
+    input.style.borderColor = '';
+  } else {
+    hint.textContent = 'Vuosi ok';
+    hint.className = 'field-hint hint-ok';
+    input.style.borderColor = '';
+  }
+  updatePreview();
+}
+
+// ── Engine validation ──────────────────────────────────────────
+function validateEngine(input) {
+  var val = input.value.trim();
+  var hint = document.getElementById('hint-engine');
+  if (!val) { hint.textContent = ''; hint.className = 'field-hint'; updatePreview(); return; }
+  // Common engine format: 1.6, 2.3T, 2.0 TDI, 3.0 V6 etc
+  var hasDisp = /\d+[.,]\d/.test(val);
+  if (hasDisp) {
+    hint.textContent = 'Moottori ok';
+    hint.className = 'field-hint hint-ok';
+  } else if (/^\d+$/.test(val)) {
+    hint.textContent = 'Lisää desimaalipiste, esim. ' + val + '.0';
+    hint.className = 'field-hint hint-warn';
+  } else {
+    hint.textContent = '';
+    hint.className = 'field-hint';
+  }
+  updatePreview();
+}
+
+// ── Live preview ───────────────────────────────────────────────
+function updatePreview() {
+  var make  = document.getElementById('m-make').value.trim();
+  var model = document.getElementById('m-model').value.trim();
+  var year  = document.getElementById('m-year').value.trim();
+  var eng   = document.getElementById('m-engine').value.trim();
+  var prev  = document.getElementById('manual-preview');
+  var txt   = document.getElementById('preview-text');
+  if (!make && !model) { prev.style.display = 'none'; return; }
+  var parts = [year, make, model, eng].filter(Boolean);
+  txt.textContent = parts.join(' ');
+  prev.style.display = '';
+}
+
+// Attach preview update to selects too
+['m-fuel','m-trans','m-body'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('change', updatePreview);
+});
+
 function doManualSave() {
   var make = document.getElementById('m-make').value.trim();
   var model = document.getElementById('m-model').value.trim();
@@ -942,11 +1263,13 @@ function renderPartHeader(info, rawPart) {
   } else { toolsBox.style.display = 'none'; }
 
   // Guide
+  // Guide with step icons
   var steps = (info.replacement_summary || '').split('\n').filter(function(l){ return l.trim(); });
   document.getElementById('guide-steps').innerHTML = steps.length ? steps.map(function(line) {
     var m = line.match(/^(\d+)\.\s*(.*)/);
-    if (m) return '<div class="guide-step"><div class="step-num">' + m[1] + '</div><div class="step-text">' + m[2] + '</div></div>';
-    return '<div class="guide-step"><div class="step-num" style="visibility:hidden">·</div><div class="step-text" style="color:var(--text2)">' + line.trim() + '</div></div>';
+    if (m) return '<div class="guide-step"><div class="step-icon">' + getStepIcon(m[2]) + '</div><div style="flex:1"><div class="step-text">' + m[2] + '</div></div></div>';
+    return '<div class="guide-step" style="padding-left:52px"><div class="step-text" style="color:var(--text2)">' + line.trim() + '</div></div>';
+  }).join('') : '<div class="empty">Ei ohjetta saatavilla</div>';
   }).join('') : '<div class="empty">Ei ohjetta saatavilla</div>';
 
   // Reset to guide tab

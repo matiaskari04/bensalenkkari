@@ -1104,15 +1104,17 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
                     oem_numbers.append(kw)
 
     if oem_numbers:
-        # Search by OEM number + part name for accuracy (OEM alone can match wrong parts)
         primary = oem_numbers[0]
         base_part = part.split(",")[0].strip()
+        # Query: OEM number + make + model + part name for best Shopping results
         oem_query = f"{primary} {make} {model} {base_part}".strip()
+        # Fallback URL uses full descriptive query (better for Google Shopping)
+        fallback_query = f"{year} {make} {model} {base_part}".strip()
         print(f"  {Fore.GREEN}✓ Searching by OEM part number: {primary}{Style.RESET_ALL}")
         if SERPER_API_KEY:
             return _fetch_via_serper(oem_query, country, oem_numbers)
         else:
-            return _fetch_fallback_links(oem_query, country, oem_numbers)
+            return _fetch_fallback_links(fallback_query, country, oem_numbers)
     else:
         # No OEM number found — fall back to descriptive search with full car context
         # Use canonical part name from AI if available, otherwise raw user input
@@ -1205,13 +1207,16 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
             return (pref, price)
 
         results = []
-        seen = set()
+        seen = {}  # shop_key -> count
         for item in sorted(items, key=sort_key):
             source = item.get("source", item.get("seller", "Unknown"))
-            key = source.lower().split(".")[0][:12]
-            if key in seen:
+            # Use domain root as key: "eBay - seller123" -> "ebay", "autodoc.fi" -> "autodoc"
+            key = re.sub(r"[^a-z].*", "", source.lower().replace("ebay", "ebay"))
+            key = key.split(".")[0][:15]
+            # Allow max 2 listings per shop
+            if seen.get(key, 0) >= 2:
                 continue
-            seen.add(key)
+            seen[key] = seen.get(key, 0) + 1
 
             price_raw = item.get("price", "")
             price_num = None
@@ -1249,9 +1254,9 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
 def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) -> list[dict]:
     q   = urllib.parse.quote_plus(query)
     gl  = country.lower()
-    # If we have multiple OEM numbers, add them to Google Shopping query for better results
-    gsh_q = urllib.parse.quote_plus(" OR ".join(oem_numbers[:3])) if oem_numbers and len(oem_numbers) > 1 else q
-    gsh = f"https://www.google.com/search?tbm=shop&q={gsh_q}&gl={gl}"
+    # Google Shopping works better with descriptive queries than bare OEM numbers
+    # Use the full query (which includes make/model/part name) for the Shopping link
+    gsh = f"https://www.google.com/search?tbm=shop&q={q}&gl={gl}"
     return [
         {"shop": "Google Shopping",  "price": None, "url": gsh,                                                      "note": "Kaikki kaupat — klikkaa vertaillaksesi"},
         {"shop": "Autodoc",          "price": None, "url": f"https://www.autodoc.fi/search?query={q}",               "note": "Katso sivustolta", "shipping": "3-7 days"},

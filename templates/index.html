@@ -1934,7 +1934,7 @@ function renderTuning(data) {
     return '<div class="mod-card">'
       +'<div class="mod-header"><span class="mod-cat '+(CAT_CLASS[cat]||'cat-other')+'">'+(CAT_LABEL[cat]||cat)+'</span><div class="mod-name">'+mod.name+'</div><div class="mod-worth">'+stars+'</div></div>'
       +'<div class="mod-desc">'+(mod.description||'')+'</div>'
-      +(mod.hp_gain||mod.torque_gain?'<div class="mod-gains">'+(mod.hp_gain?'<div class="gain-box"><div class="gain-val">+'+mod.hp_gain+' hp</div><div class="gain-lbl">tehoa</div></div>':'')+(mod.torque_gain?'<div class="gain-box"><div class="gain-val">+'+mod.torque_gain+' Nm</div><div class="gain-lbl">vääntöä</div></div>':'')+'</div>':'')
+      +(mod.hp_gain||mod.torque_gain?'<div class="mod-gains">'+(mod.hp_gain?'<div class="gain-box"><div class="gain-val">+'+(mod.hp_gain)+' hp</div><div class="gain-lbl">'+(LANG==="fi"?"lisäteho":"power gain")+'</div></div>':'')+(mod.torque_gain?'<div class="gain-box"><div class="gain-val">+'+(mod.torque_gain)+' Nm</div><div class="gain-lbl">'+(LANG==="fi"?"lisävääntö":"torque gain")+'</div></div>':'')+'</div>':'')
       +fx
       +'<div class="mod-footer"><div><div class="mod-price">~€'+(mod.price_eur||'?')+'</div>'+(mod.price_range?'<div class="mod-price-range">('+mod.price_range+' €)</div>':'')+'</div>'
       +'<span class="mod-badge">'+(mod.reversible?(LANG==='fi'?'Palautettavissa':'Reversible'):(LANG==='fi'?'Pysyvä':'Permanent'))+'</span>'

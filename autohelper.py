@@ -1285,16 +1285,16 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
     engine = car.get("engine", "")
     car_str = f"{year} {make} {model} {engine}".strip()
 
-    # Search for real tuning data
-    search_context = ""
+    # Step 1: Search for REAL stock specs first
+    spec_context = ""
     if SERPER_API_KEY:
         try:
-            queries = [
-                f"{make} {model} {engine} tuning stage 1 2 3 horsepower gains remap",
-                f"{make} {model} {engine} tuning mods prices handling suspension",
+            spec_queries = [
+                f"{year} {make} {model} {engine} horsepower torque specs",
+                f"{make} {model} {engine} stock power output specifications",
             ]
-            snippets = []
-            for q in queries:
+            spec_snippets = []
+            for q in spec_queries:
                 r = requests.post(
                     "https://google.serper.dev/search",
                     headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
@@ -1302,39 +1302,82 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
                     timeout=10,
                 )
                 if r.status_code == 200:
-                    for item in r.json().get("organic", [])[:4]:
-                        snippets.append(item.get("snippet", ""))
-            if snippets:
-                search_context = "\n\nReal tuning data from web:\n" + "\n".join(snippets[:6])
+                    data = r.json()
+                    # Also check answer box and knowledge graph for specs
+                    if data.get("answerBox"):
+                        spec_snippets.append(str(data["answerBox"])[:300])
+                    for item in data.get("organic", [])[:3]:
+                        spec_snippets.append(item.get("snippet", ""))
+            if spec_snippets:
+                spec_context = "Real stock specs from web:\n" + "\n".join(spec_snippets[:5])
         except Exception:
             pass
 
-    lang_instruction = "Write ALL text fields (name, description, summary, notes, effect, everything) in FINNISH. Do not use English anywhere in text fields." if lang == "fi" else "Write ALL text fields in ENGLISH. Do not use Finnish anywhere in text fields."
-    system = f"You are an automotive tuning expert. You MUST respond with valid RFC 8259 JSON only. EVERY string value MUST be in double quotes. No unquoted values. No markdown. {lang_instruction}"
+    # Step 2: Search for real tuning data
+    tune_context = ""
+    if SERPER_API_KEY:
+        try:
+            tune_queries = [
+                f"{make} {model} {engine} ECU remap stage 1 hp gain realistic",
+                f"{make} {model} tuning modifications realistic power gains",
+            ]
+            tune_snippets = []
+            for q in tune_queries:
+                r = requests.post(
+                    "https://google.serper.dev/search",
+                    headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
+                    json={"q": q, "num": 4},
+                    timeout=10,
+                )
+                if r.status_code == 200:
+                    for item in r.json().get("organic", [])[:3]:
+                        tune_snippets.append(item.get("snippet", ""))
+            if tune_snippets:
+                tune_context = "Real tuning data from web:\n" + "\n".join(tune_snippets[:4])
+        except Exception:
+            pass
+
+    search_context = spec_context + ("\n\n" if spec_context and tune_context else "") + tune_context
+
+    lang_instruction = (
+        "Write ALL text fields in FINNISH only. Zero English anywhere in text fields."
+        if lang == "fi" else
+        "Write ALL text fields in ENGLISH only. Zero Finnish anywhere in text fields."
+    )
+    system = (
+        "You are an automotive tuning expert. Respond with valid JSON only. No markdown. "
+        "Be conservative and realistic — do not exaggerate power gains. "
+        + lang_instruction
+    )
 
     prompt = (
         f"Car: {car_str}\n"
-        f"Language for ALL text output: {lang}\n"
         f"{search_context}\n\n"
-        "Return a JSON object for tuning this EXACT car model. Do not assume engine variants - use only what is specified.\n"
-        "Structure:\n"
-        "{ stock_hp: int, stock_torque: int, summary: string,\n"
-        "  cosmetics: [ { name, category, description, price_eur, price_range, difficulty, effect, worth_score, popular_brands } ],\n"
-        "  levels: [ { level, name, description, total_hp, total_torque, total_cost_eur,\n"
-        "    mods: [ { name, category, description, hp_gain, torque_gain, price_eur, price_range,\n"
-        "             difficulty, reversible, worth_score, notes, requires: [],\n"
-        "             effects: { power_hp: int, torque_nm: int, handling: int, fuel_l100km: float, reliability: int, daily_usability: int } } ] } ] }\n\n"
-        "CRITICAL RULES:\n"
-        f"1. ALL text fields (name, description, summary, notes, effect) MUST be in {lang} language ONLY. Zero mixing.\n"
-        "2. For effects use REAL UNITS not abstract scores: power_hp (+20), torque_nm (+40), fuel_l100km (+0.5 means worse), handling/reliability/daily_usability use -3 to +5 scale.\n"
-        "3. requires field must always be a JSON array [], never a string.\n"
-        "4. popular_brands must always be a JSON array [], never a string.\n"
-        "5. Do not invent engine variants - base mods on the exact car specified.\n"
-        "Stage 1: bolt-on (remap, filter, exhaust). Stage 2: hardware (downpipe, intercooler, suspension). Stage 3: major (turbo, internals).\n"
-        "2-4 mods per stage. worth_score 1-5. Prices in EUR.\n"
-        "6-10 cosmetics: wheels, lowering, tint, body kit, wrap, LEDs, interior, exhaust tip, debadging."
+        "TASK: Return tuning and cosmetics data for this exact car.\n\n"
+        "CRITICAL: Use the REAL stock specs from the web data above. Do not guess or invent specs.\n"
+        "CRITICAL: Be REALISTIC and CONSERVATIVE with power gains:\n"
+        "  - A Stage 1 remap on a naturally aspirated engine gives 5-15 hp MAX, often less.\n"
+        "  - A Stage 1 remap on a turbo engine gives 15-40 hp depending on the engine.\n"
+        "  - Do not claim 50+ hp from a simple remap unless the web data confirms it.\n"
+        "  - hp_gain is the gain from THAT MOD ALONE, not cumulative total.\n"
+        "  - total_hp in each level = stock_hp + sum of all hp_gains in that level + previous levels.\n"
+        "CRITICAL: All text fields must be in language: " + lang + " ONLY.\n\n"
+        "JSON structure:\n"
+        "{ \"stock_hp\": int, \"stock_torque\": int, \"summary\": \"string\",\n"
+        "  \"cosmetics\": [ { \"name\": \"str\", \"category\": \"str\", \"description\": \"str\","
+        " \"price_eur\": int, \"price_range\": \"str\", \"worth_score\": int, \"effect\": \"str\", \"popular_brands\": [] } ],\n"
+        "  \"levels\": [ { \"level\": 1, \"name\": \"str\", \"description\": \"str\","
+        " \"total_hp\": int, \"total_torque\": int, \"total_cost_eur\": int,\n"
+        "    \"mods\": [ { \"name\": \"str\", \"category\": \"str\", \"description\": \"str\","
+        " \"hp_gain\": int, \"torque_gain\": int,\n"
+        "      \"price_eur\": int, \"price_range\": \"str\", \"difficulty\": \"str\","
+        " \"reversible\": bool, \"worth_score\": int, \"notes\": \"str\",\n"
+        "      \"requires\": [], \"effects\": { \"power_hp\": int, \"torque_nm\": int,"
+        " \"handling\": int, \"fuel_l100km\": float, \"reliability\": int, \"daily_usability\": int } } ] } ] }\n\n"
+        "Stage 1: bolt-on only (remap, air filter, cat-back). Stage 2: hardware (suspension, brakes, intake). Stage 3: major (if applicable).\n"
+        "2-4 mods per stage. worth_score 1-5 (be honest, not everything is worth 5). Prices in EUR for Finnish market.\n"
+        "6-8 cosmetics. requires[] must be array. popular_brands[] must be array."
     )
-    raw = claude(prompt, system=system, max_tokens=2500)
     try:
         import re as _re, json as _json
         s = _re.sub(r'```json|```', '', raw).strip()

@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bensalenkkari">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.svg">
+<title>Bensalenkkari</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
+  --amber:#f59e0b; --amber-dim:#b45309; --amber-glow:rgba(245,158,11,.12);
+  --text:#f0f0f0; --text2:#a0a0a0; --text3:#666;
+  --green:#22c55e; --red:#ef4444;
+  --r:14px; --rs:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16.5px;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden}
+a{color:var(--amber);text-decoration:none}
+button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
+input,select{font-family:inherit}
+.app{max-width:600px;margin:0 auto;padding-bottom:80px}
+
+/* Header */
+.hdr{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px}
+.logo-text{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--amber)}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:-2px}
+.lang-btn{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:6px 12px;font-size:13px;color:var(--text2);font-weight:500}
+
+/* Sections */
+.sec{padding:24px 20px 0}
+.sec-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+
+/* Cards scroll */
+.cars-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.cars-scroll::-webkit-scrollbar{display:none}
+.car-card{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;min-width:160px;cursor:pointer;transition:border-color .15s;position:relative}
+.car-card:hover,.car-card:active{border-color:var(--amber);background:var(--amber-glow)}
+.car-card-name{font-size:14px;font-weight:700}
+.car-card-detail{font-size:13px;color:var(--text2);margin-top:3px}
+.car-card-parts{font-size:11px;color:var(--text3);margin-top:4px}
+.car-card-del{position:absolute;top:8px;right:8px;color:var(--text3);font-size:18px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.car-card-del:hover{color:var(--red)}
+.empty-cars{color:var(--text3);font-size:13px;padding:8px 0}
+
+/* Block */
+.block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+
+/* Toggle */
+.mode-toggle{display:flex;gap:8px;margin-bottom:14px}
+.toggle-btn{flex:1;padding:8px 14px;border-radius:var(--rs);font-size:13px;font-weight:500;color:var(--text3);background:var(--surface2);border:1px solid var(--border);transition:all .15s}
+.toggle-btn.active{background:var(--amber-glow);border-color:var(--amber);color:var(--amber)}
+
+/* Inputs */
+.row{display:flex;gap:10px;margin-bottom:12px}
+.field{flex:1}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+.field input,.field select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:15px;padding:11px 14px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus{border-color:var(--amber)}
+.field input::placeholder{color:var(--text3)}
+.field select option{background:var(--surface2)}
+
+/* Buttons */
+.btn-primary{width:100%;background:var(--amber);color:#000;font-size:15px;font-weight:600;padding:13px;border-radius:var(--rs);transition:opacity .15s}
+.btn-primary:active{opacity:.85}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+
+/* Car result */
+.car-result{background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:16px 18px;display:none}
+.car-result.show{display:block}
+.car-result-name{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700}
+.car-result-detail{font-size:13px;color:var(--text2);margin-top:4px}
+.car-extra{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-top:10px}
+.car-field-label{font-size:11px;color:var(--text3)}
+.car-field-value{font-size:13px;font-weight:500}
+.car-vin{font-size:11px;color:var(--text3);margin-top:8px;font-family:monospace}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-top:8px}
+.badge-high{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-low{background:rgba(239,68,68,.15);color:var(--red)}
+
+/* Part search */
+.part-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;display:none}
+.part-block.show{display:block}
+.part-row{display:flex;gap:10px}
+.part-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:15px;padding:11px 14px;outline:none;transition:border-color .15s}
+.part-row input:focus{border-color:var(--amber)}
+.part-row input::placeholder{color:var(--text3)}
+.btn-search{background:var(--amber);color:#000;font-size:20px;width:48px;height:48px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.clarify{background:rgba(245,158,11,.1);border:1px solid var(--amber-dim);border-radius:var(--rs);padding:12px 14px;font-size:13px;color:var(--amber);margin-top:12px;display:none}
+.clarify.show{display:block}
+.recent-parts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.recent-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer;transition:border-color .15s}
+.recent-chip:hover{border-color:var(--amber);color:var(--amber)}
+
+/* Loading */
+.loading-bar{height:3px;background:var(--border);border-radius:3px;overflow:hidden;margin:16px 0;display:none}
+.loading-bar.show{display:block}
+.loading-fill{height:100%;background:var(--amber);animation:ld 2s ease-in-out infinite}
+@keyframes ld{0%{width:0;opacity:1}80%{width:90%;opacity:1}100%{width:100%;opacity:0}}
+.loading-text{font-size:13px;color:var(--text3);text-align:center;padding:4px 0}
+
+/* Error */
+.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--rs);padding:12px 14px;font-size:13px;color:var(--red);margin-top:12px;display:none}
+.err.show{display:block}
+
+/* Results */
+.results{display:none}
+.results.show{display:block}
+
+/* Part header */
+.part-hdr{padding:20px 20px 0}
+.part-hero{display:flex;gap:16px;align-items:flex-start}
+.part-img-wrap{width:90px;height:90px;border-radius:var(--rs);background:var(--surface2);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden}
+.part-img-wrap img{width:100%;height:100%;object-fit:contain}
+.part-name{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;line-height:1.2}
+.part-desc{font-size:14px;color:var(--text2);margin-top:8px;line-height:1.65}
+.part-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.meta-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text2)}
+.meta-chip span{color:var(--text);font-weight:500}
+
+/* Part numbers */
+.pn-block{margin:16px 20px 0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.pn-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:600}
+.pn-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
+.pn-row:last-child{border-bottom:none}
+.pn-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;flex-shrink:0}
+.pn-oem{background:rgba(34,197,94,.15);color:var(--green)}
+.pn-am{background:rgba(245,158,11,.1);color:var(--amber)}
+.pn-num{font-size:14px;font-weight:600;font-family:monospace;flex:1}
+.pn-brand{font-size:12px;color:var(--text3)}
+.pn-right{display:flex;align-items:center;gap:6px;margin-left:auto}
+.pn-copy{font-size:18px;color:var(--text3);padding:4px;border-radius:6px;cursor:pointer}
+.pn-copy:hover{color:var(--amber)}
+.pn-qual{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(99,102,241,.15);color:#a5b4fc;white-space:nowrap}
+
+/* Tabs */
+.tabs-wrap{position:sticky;top:57px;z-index:90;background:var(--bg);padding:0 20px;border-bottom:1px solid var(--border)}
+.tabs{display:flex;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{flex-shrink:0;padding:14px 16px;font-size:13px;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap}
+.tab-btn.active{color:var(--amber);border-bottom-color:var(--amber)}
+.tab-panel{display:none;padding:20px}
+.tab-panel.active{display:block}
+
+/* Guide */
+.tools-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:14px 16px;margin-bottom:20px;display:none}
+.tools-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:600}
+.tools-list{display:flex;flex-wrap:wrap;gap:8px}
+.tool-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text2)}
+.guide-step{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.guide-step:last-child{border-bottom:none}
+.step-num{width:28px;height:28px;background:var(--amber-glow);border:1px solid var(--amber-dim);border-radius:50%;color:var(--amber);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:15px;line-height:1.7}
+
+/* Prices */
+.price-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;text-decoration:none;transition:border-color .15s}
+.price-card:hover,.price-card:active{border-color:var(--amber)}
+.price-card.best{border-color:var(--amber);background:var(--amber-glow)}
+.price-shop{flex:1}
+.price-shop-name{font-size:15px;font-weight:600}
+.price-ship{font-size:12px;color:var(--text3);margin-top:2px}
+.price-part{font-size:12px;color:var(--text2);margin-top:2px}
+.price-amt{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--amber);white-space:nowrap}
+.price-amt.muted{font-size:13px;color:var(--text3)}
+.best-badge{font-size:10px;font-weight:600;background:var(--amber);color:#000;padding:2px 6px;border-radius:10px;margin-left:6px;vertical-align:middle}
+
+/* Videos */
+.video-card{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);text-decoration:none}
+.video-card:last-child{border-bottom:none}
+.video-thumb{width:80px;height:52px;background:var(--surface2);border-radius:var(--rs);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px}
+.video-thumb img{width:100%;height:100%;object-fit:cover}
+.video-title{font-size:14px;color:var(--text);line-height:1.5}
+
+/* Diagrams */
+.diagram-img{width:100%;border-radius:var(--rs);margin-bottom:12px;display:block;background:var(--surface2)}
+.diagram-link{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;margin-bottom:10px;text-decoration:none;color:var(--text);font-size:14px;transition:border-color .15s}
+.diagram-link:hover{border-color:var(--amber)}
+
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:14px}
+.empty-icon{font-size:36px;margin-bottom:10px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 18px;font-size:13px;z-index:999;transition:transform .25s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:380px){.part-img-wrap{width:72px;height:72px}.part-name{font-size:19px}}
+.ac-wrap{position:relative}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--amber);border-radius:var(--rs);z-index:200;display:none;box-shadow:0 4px 20px rgba(0,0,0,.4);max-height:180px;overflow-y:auto}
+.ac-list.open{display:block}
+.ac-item{padding:10px 14px;font-size:14px;cursor:pointer;color:var(--text);border-bottom:1px solid var(--border)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover,.ac-item.sel{background:var(--amber-glow);color:var(--amber)}
+.field-hint{font-size:11px;margin-top:4px;min-height:16px;padding:0 2px}
+.hint-ok{color:#22c55e}
+.hint-warn{color:#f59e0b}
+.hint-err{color:#ef4444}
+.manual-preview{background:var(--amber-glow);border:1px solid var(--amber-dim);border-radius:var(--rs);padding:10px 14px;margin-bottom:12px;font-size:14px;font-weight:600;color:var(--amber)}
+.diagram-gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.diagram-thumb{border-radius:var(--rs);overflow:hidden;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:border-color .15s}
+.diagram-thumb:hover,.diagram-thumb:active{border-color:var(--amber)}
+.diagram-thumb img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.diagram-thumb-title{font-size:11px;color:var(--text3);padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:1000;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px}
+.lightbox.open{display:flex}
+.lightbox-img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:var(--rs)}
+.lightbox-title{color:var(--text2);font-size:12px;margin-top:10px;text-align:center;max-width:90%}
+.lightbox-close{position:absolute;top:16px;right:16px;color:#fff;font-size:32px;cursor:pointer;line-height:1}
+.lightbox-nav{display:flex;gap:20px;margin-top:14px}
+.lightbox-nav button{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:22px;padding:8px 22px;cursor:pointer;transition:border-color .15s}
+.lightbox-nav button:hover{border-color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="hdr">
+  <div style="display:flex;align-items:center;gap:12px">
+    <!-- Mechanic logo SVG -->
+    <svg width="52" height="44" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- White sedan car body -->
+      <rect x="4" y="26" width="40" height="11" rx="3" fill="#e8e8e8"/>
+      <!-- Car roof/cabin -->
+      <path d="M13 26 Q15 18 22 17 L32 17 Q38 17 40 26Z" fill="#f0f0f0"/>
+      <!-- Windows -->
+      <path d="M16 25 Q17 20 21 19 L26 19 L26 25Z" fill="#a8d4f0" opacity="0.8"/>
+      <path d="M27 25 L27 19 L32 19 Q36 20 37 25Z" fill="#a8d4f0" opacity="0.8"/>
+      <!-- Wheels -->
+      <circle cx="13" cy="37" r="4.5" fill="#333"/>
+      <circle cx="13" cy="37" r="2.5" fill="#888"/>
+      <circle cx="35" cy="37" r="4.5" fill="#333"/>
+      <circle cx="35" cy="37" r="2.5" fill="#888"/>
+      <!-- Door line -->
+      <line x1="26" y1="26" x2="26" y2="36" stroke="#ccc" stroke-width="0.8"/>
+      <!-- Mechanic body -->
+      <rect x="38" y="20" width="10" height="13" rx="3" fill="#f59e0b"/>
+      <!-- Mechanic head -->
+      <circle cx="43" cy="14" r="5.5" fill="#f5c5a3"/>
+      <!-- Hair -->
+      <path d="M38 12 Q39 8 43 8 Q47 8 48 12 Q46 10 43 10 Q40 10 38 12Z" fill="#5c3d1e"/>
+      <!-- Smile -->
+      <path d="M41 16 Q43 18 45 16" stroke="#c0706a" stroke-width="1" fill="none" stroke-linecap="round"/>
+      <!-- Eyes -->
+      <circle cx="41.5" cy="14" r="0.8" fill="#444"/>
+      <circle cx="44.5" cy="14" r="0.8" fill="#444"/>
+      <!-- Wrench -->
+      <rect x="46" y="10" width="2.5" height="11" rx="1.2" fill="#aaa" transform="rotate(30 47 15)"/>
+      <rect x="45" y="8" width="5" height="3" rx="1" fill="#888" transform="rotate(30 47 15)"/>
+      <!-- Mechanic arm on car -->
+      <path d="M38 28 Q36 30 33 30" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="logo-text">Bensalenkkari</div>
+      <div class="logo-sub" id="logo-sub">Varaosahaku</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;margin-left:auto">
+    <button class="lang-btn" id="flag-fi" onclick="setLang('fi')">🇫🇮</button>
+    <button class="lang-btn" id="flag-en" onclick="setLang('en')">🇬🇧</button>
+  </div>
+</header>
+
+<!-- My Cars -->
+<section class="sec">
+  <div class="sec-title" id="lbl-mycars">Autoni</div>
+  <div class="cars-scroll" id="cars-list">
+    <div class="empty-cars" id="lbl-nocars">Ei tallennettuja autoja — hae VIN-koodilla</div>
+  </div>
+</section>
+
+<!-- Lookup -->
+<section class="sec">
+  <div class="sec-title" id="lbl-lookup">Ajoneuvon haku</div>
+  <div class="block">
+    <div class="mode-toggle">
+      <button class="toggle-btn active" id="btn-vin-mode" onclick="setMode('vin')">VIN-haku</button>
+      <button class="toggle-btn" id="btn-man-mode" onclick="setMode('manual')">Syötä manuaalisesti</button>
+    </div>
+
+    <!-- VIN mode -->
+    <div id="mode-vin">
+      <div class="row">
+        <div class="field" style="flex:2">
+          <label id="lbl-vin">VIN-koodi</label>
+          <input id="vin-input" type="text" placeholder="YS3EB59A..." maxlength="17" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <div class="field" style="flex:1">
+          <label id="lbl-region">Alue</label>
+          <select id="country-sel">
+            <option value="FI">🇫🇮 FI</option>
+            <option value="SE">🇸🇪 SE</option>
+            <option value="NO">🇳🇴 NO</option>
+            <option value="DE">🇩🇪 DE</option>
+            <option value="GB">🇬🇧 GB</option>
+            <option value="US">🇺🇸 US</option>
+            <option value="EE">🇪🇪 EE</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" id="btn-lookup">Hae ajoneuvo</button>
+    </div>
+
+    <!-- Manual mode -->
+    <div id="mode-manual" style="display:none">
+      <!-- Make with autocomplete -->
+      <div class="row">
+        <div class="field ac-wrap" style="flex:2">
+          <label id="lbl-make">Merkki</label>
+          <input id="m-make" placeholder="esim. Saab" autocomplete="off" oninput="acMake(this)">
+          <div class="ac-list" id="ac-make"></div>
+          <div class="field-hint" id="hint-make"></div>
+        </div>
+        <div class="field" style="flex:1">
+          <label id="lbl-year">Vuosi</label>
+          <input id="m-year" type="number" placeholder="2007" min="1970" max="2025" oninput="validateYear(this)">
+          <div class="field-hint" id="hint-year"></div>
+        </div>
+      </div>
+      <!-- Model with autocomplete -->
+      <div class="row">
+        <div class="field ac-wrap" style="flex:2">
+          <label id="lbl-model">Malli</label>
+          <input id="m-model" placeholder="esim. 9-5" autocomplete="off" oninput="acModel(this)">
+          <div class="ac-list" id="ac-model"></div>
+          <div class="field-hint" id="hint-model"></div>
+        </div>
+        <div class="field" style="flex:1">
+          <label id="lbl-engine">Moottori</label>
+          <input id="m-engine" placeholder="esim. 2.3T" oninput="validateEngine(this)">
+          <div class="field-hint" id="hint-engine"></div>
+        </div>
+      </div>
+      <!-- Fuel & Transmission -->
+      <div class="row">
+        <div class="field">
+          <label id="lbl-fuel">Polttoaine</label>
+          <select id="m-fuel">
+            <option value="">Valitse...</option>
+            <option value="Petrol">Bensiini</option>
+            <option value="Diesel">Diesel</option>
+            <option value="Electric">Sähkö</option>
+            <option value="Hybrid">Hybridi</option>
+            <option value="Plug-in Hybrid">Ladattava hybridi</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="lbl-trans">Vaihteisto</label>
+          <select id="m-trans">
+            <option value="">Valitse...</option>
+            <option value="Manual">Manuaali</option>
+            <option value="Automatic">Automaatti</option>
+            <option value="Semi-automatic">Puoliautomaatti</option>
+            <option value="CVT">CVT</option>
+          </select>
+        </div>
+      </div>
+      <!-- Body & Region -->
+      <div class="row">
+        <div class="field">
+          <label id="lbl-body">Korimalli</label>
+          <select id="m-body">
+            <option value="">Valitse...</option>
+            <option value="Sedan">Sedan</option>
+            <option value="Estate/Wagon">Farmari</option>
+            <option value="Hatchback">Hatchback</option>
+            <option value="SUV">SUV</option>
+            <option value="Coupe">Coupe</option>
+            <option value="Convertible">Avoauto</option>
+            <option value="Van">Pakettiauto</option>
+            <option value="Pickup">Pickup</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="lbl-region2">Alue</label>
+          <select id="m-country">
+            <option value="FI">FI</option>
+            <option value="SE">SE</option>
+            <option value="NO">NO</option>
+            <option value="DE">DE</option>
+            <option value="GB">GB</option>
+            <option value="US">US</option>
+          </select>
+        </div>
+      </div>
+      <!-- Live preview -->
+      <div class="manual-preview" id="manual-preview" style="display:none">
+        <span id="preview-text"></span>
+      </div>
+      <button class="btn-primary" id="btn-manual">Tallenna auto</button>
+    </div>
+  </div>
+  <div class="err" id="vin-err"></div>
+</section>
+
+<!-- Car result -->
+<section class="sec">
+  <div class="car-result" id="car-result">
+    <div class="car-result-name" id="car-name"></div>
+    <div class="car-result-detail" id="car-detail"></div>
+    <div class="car-extra" id="car-extra"></div>
+    <div class="car-vin" id="car-vin"></div>
+    <span class="badge" id="car-badge"></span>
+  </div>
+</section>
+
+<!-- Part search -->
+<section class="sec">
+  <div class="part-block" id="part-block">
+    <div class="sec-title" id="lbl-searchpart" style="margin-bottom:12px">Hae varaosa</div>
+    <div class="part-row">
+      <input id="part-input" placeholder="esim. etujarrupalat, laturi...">
+      <button class="btn-search" id="btn-search">Hae</button>
+    </div>
+    <div class="clarify" id="clarify"></div>
+    <div class="recent-parts" id="recent-parts"></div>
+  </div>
+</section>
+
+<!-- Loading -->
+<div style="padding:0 20px">
+  <div class="loading-bar" id="loading-bar"><div class="loading-fill"></div></div>
+  <div class="loading-text" id="loading-text"></div>
+</div>
+
+<!-- Results -->
+<div class="results" id="results">
+  <div class="part-hdr">
+    <div class="part-hero">
+      <div class="part-img-wrap" id="part-img"></div>
+      <div style="flex:1">
+        <div class="part-name" id="res-name"></div>
+        <div class="part-desc" id="res-desc"></div>
+        <div class="part-meta" id="res-meta"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pn-block" id="pn-block">
+    <div class="pn-title" id="lbl-partnums">Osanumerot</div>
+    <div id="pn-list"></div>
+  </div>
+
+  <div class="tabs-wrap">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="guide" id="lbl-tab-guide">Ohjeet</button>
+      <button class="tab-btn" data-tab="prices" id="lbl-tab-prices">Hinnat</button>
+      <button class="tab-btn" data-tab="videos" id="lbl-tab-videos">Videot</button>
+      <button class="tab-btn" data-tab="diagrams" id="lbl-tab-diagrams">Kaaviot</button>
+    </div>
+  </div>
+
+  <div class="tab-panel active" id="tab-guide">
+    <div class="tools-box" id="tools-box">
+      <div class="tools-title" id="lbl-tools">Tarvittavat työkalut</div>
+      <div class="tools-list" id="tools-list"></div>
+    </div>
+    <div id="guide-steps"></div>
+  </div>
+  <div class="tab-panel" id="tab-prices"><div id="prices-list"></div></div>
+  <div class="tab-panel" id="tab-videos"><div id="videos-list"></div></div>
+  <div class="tab-panel" id="tab-diagrams"><div id="diagrams-content"></div></div>
+</div>
+
+</div><!-- /app -->
+<div class="lightbox" id="lightbox" onclick="closeLightboxEl()">
+  <span class="lightbox-close" onclick="closeLightboxEl()">×</span>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+  <div class="lightbox-title" id="lightbox-title"></div>
+  <div class="lightbox-nav">
+    <button onclick="lightboxNav(-1)">‹</button>
+    <button onclick="lightboxNav(1)">›</button>
+  </div>
+</div>
+<div class="lightbox-bg" onclick="closeLightboxEl()" style="display:none"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────
+function hideEl(el) { if (el) el.style.display = 'none'; }
+
+// ── Translations ──────────────────────────────────────────────
+var LANG = localStorage.getItem('blang') || 'fi';
+
+var TR = {
+  fi: {
+    'logo-sub':'Varaosahaku','lbl-mycars':'Autoni','lbl-nocars':'Ei tallennettuja autoja — hae VIN-koodilla',
+    'lbl-lookup':'Ajoneuvon haku','lbl-vinlookup':'VIN-haku','lbl-manual':'Syötä manuaalisesti',
+    'lbl-vin':'VIN-koodi','lbl-region':'Alue','lbl-region2':'Alue',
+    'btn-lookup':'Hae ajoneuvo','btn-manual':'Tallenna auto',
+    'lbl-make':'Merkki','lbl-model':'Malli','lbl-year':'Vuosi','lbl-engine':'Moottori',
+    'lbl-fuel':'Polttoaine','lbl-trans':'Vaihteisto','lbl-body':'Korimalli',
+    'lbl-searchpart':'Hae varaosa','part-placeholder':'esim. etujarrupalat, laturi...',
+    'lbl-partnums':'Osanumerot','lbl-tools':'Tarvittavat työkalut',
+    'lbl-tab-guide':'Ohjeet','lbl-tab-prices':'Hinnat','lbl-tab-videos':'Videot','lbl-tab-diagrams':'Kaaviot',
+    'loading-vin':'Haetaan ajoneuvoa...','loading-oem':'Haetaan OEM-numeroita...','loading-all':'Haetaan hintoja ja videoita...',
+    'err-vin-required':'Anna VIN-koodi','err-vin-length':'VIN-koodin on oltava 17 merkkiä',
+    'err-make-required':'Merkki ja malli ovat pakollisia',
+    'no-prices':'Hintoja ei löydy','no-videos':'Videoita ei löydy','no-diagrams':'Kaavioita ei löydy',
+    'cheapest':'HALVIN','see-site':'Katso sivustolta','copied':'Kopioitu!',
+    'manual-entry':'Syötetty manuaalisesti','recent-label':'Viimeisimmät:',
+    'diagram-search':'Hae lisää kaavioita Google Kuvista',
+    'field-year':'Vuosi','field-engine':'Moottori','field-fuel':'Polttoaine',
+    'field-trans':'Vaihteisto','field-body':'Korimalli','field-color':'Väri',
+    'field-muni':'Kunta','field-note':'Huomio',
+    'clarify-suffix':'(tai kirjoita molemmat puolet)',
+  },
+  en: {
+    'logo-sub':'Auto parts lookup','lbl-mycars':'My Cars','lbl-nocars':'No saved cars yet — look up a VIN below',
+    'lbl-lookup':'Vehicle Lookup','lbl-vinlookup':'VIN lookup','lbl-manual':'Enter manually',
+    'lbl-vin':'VIN Code','lbl-region':'Region','lbl-region2':'Region',
+    'btn-lookup':'Look up vehicle','btn-manual':'Save car',
+    'lbl-make':'Make','lbl-model':'Model','lbl-year':'Year','lbl-engine':'Engine',
+    'lbl-fuel':'Fuel','lbl-trans':'Transmission','lbl-body':'Body',
+    'lbl-searchpart':'Search Part','part-placeholder':'e.g. front brake pads, alternator...',
+    'lbl-partnums':'Part Numbers','lbl-tools':'Tools needed',
+    'lbl-tab-guide':'Guide','lbl-tab-prices':'Prices','lbl-tab-videos':'Videos','lbl-tab-diagrams':'Diagrams',
+    'loading-vin':'Looking up vehicle...','loading-oem':'Searching OEM numbers...','loading-all':'Fetching prices and videos...',
+    'err-vin-required':'Please enter a VIN code','err-vin-length':'VIN must be exactly 17 characters',
+    'err-make-required':'Make and model are required',
+    'no-prices':'No prices found','no-videos':'No videos found','no-diagrams':'No diagrams found',
+    'cheapest':'CHEAPEST','see-site':'See site','copied':'Copied!',
+    'manual-entry':'Manually entered','recent-label':'Recent:',
+    'diagram-search':'Search Google Images for more diagrams',
+    'field-year':'Year','field-engine':'Engine','field-fuel':'Fuel',
+    'field-trans':'Transmission','field-body':'Body','field-color':'Color',
+    'field-muni':'Municipality','field-note':'Note',
+    'clarify-suffix':'(or type "both sides")',
+  }
+};
+
+function t(key) { return (TR[LANG] || TR.fi)[key] || TR.fi[key] || key; }
+
+// Finnish → English part name translations for API searches
+var FI_TO_EN_PARTS = {
+  'etujarrupalat': 'front brake pads',
+  'takajarrupalat': 'rear brake pads',
+  'jarrupalat': 'brake pads',
+  'jarrulevyt': 'brake discs',
+  'etujarrulevyt': 'front brake discs',
+  'takajarrulevyt': 'rear brake discs',
+  'jarrusatula': 'brake caliper',
+  'etuiskunvaimennin': 'front shock absorber',
+  'takaiskunvaimennin': 'rear shock absorber',
+  'iskunvaimennin': 'shock absorber',
+  'jouset': 'springs',
+  'etujousto': 'front spring',
+  'takajousto': 'rear spring',
+  'tukivarsi': 'control arm',
+  'alatukivarsi': 'lower control arm',
+  'ylätukivarsi': 'upper control arm',
+  'pallotukilenkin': 'ball joint',
+  'pallonivel': 'ball joint',
+  'raidetanko': 'tie rod',
+  'pyörälaakeri': 'wheel bearing',
+  'vetoakseli': 'cv axle',
+  'tasonivelakseli': 'cv axle',
+  'laturi': 'alternator',
+  'käynnistin': 'starter motor',
+  'vesipumppu': 'water pump',
+  'hammashihna': 'timing belt',
+  'kiilahihna': 'drive belt',
+  'termostaatti': 'thermostat',
+  'jäähdytin': 'radiator',
+  'öljynsuodatin': 'oil filter',
+  'ilmansuodatin': 'air filter',
+  'polttoainesuodatin': 'fuel filter',
+  'sytytystulpat': 'spark plugs',
+  'sytytystulppa': 'spark plug',
+  'kytkin': 'clutch',
+  'kytkinsarja': 'clutch kit',
+  'pakoputki': 'exhaust pipe',
+  'katalysaattori': 'catalytic converter',
+  'lambda-anturi': 'oxygen sensor',
+  'happianturi': 'oxygen sensor',
+  'etupyörän laakeri': 'front wheel bearing',
+  'takapyörän laakeri': 'rear wheel bearing',
+  'ohjausvaihde': 'steering rack',
+  'ohjausnivel': 'steering joint',
+  'vakaaja': 'stabilizer bar',
+  'vakaajan tanko': 'sway bar link',
+  'polttoainepumppu': 'fuel pump',
+  'moottoriöljy': 'engine oil',
+  'jäähdytysneste': 'coolant',
+  'jarruneste': 'brake fluid',
+  'vaihteistoöljy': 'gearbox oil',
+  'etupuskuri': 'front bumper',
+  'takapuskuri': 'rear bumper',
+  'konepelti': 'hood bonnet',
+  'tuulilasi': 'windshield',
+  'pyyhkijänsulat': 'wiper blades',
+  'akku': 'battery',
+  'ajovalo': 'headlight',
+  'takavalo': 'tail light',
+  'suuntavalo': 'turn signal',
+  'peili': 'mirror',
+  'sivupeili': 'side mirror',
+};
+
+function translatePartToEN(part) {
+  var low = part.toLowerCase().trim();
+  // Direct match
+  if (FI_TO_EN_PARTS[low]) return FI_TO_EN_PARTS[low];
+  // Partial match — find longest matching key
+  var best = null;
+  var bestLen = 0;
+  Object.keys(FI_TO_EN_PARTS).forEach(function(key) {
+    if (low.includes(key) && key.length > bestLen) {
+      best = FI_TO_EN_PARTS[key];
+      bestLen = key.length;
+    }
+  });
+  if (best) return best;
+  // Try to detect if it's likely Finnish (has ä, ö, or common Finnish patterns)
+  // and pass through to AI translation if needed
+  return part; // return as-is if no translation found
+}
+
+function applyLang() {
+  Object.keys(TR.fi).forEach(function(key) {
+    var el = document.getElementById(key);
+    if (el) el.textContent = t(key);
+  });
+  var pi = document.getElementById('part-input');
+  if (pi) pi.placeholder = t('part-placeholder');
+  var lb = document.getElementById('btn-vin-mode');
+  if (lb) lb.textContent = t('lbl-vinlookup');
+  var mb = document.getElementById('btn-man-mode');
+  if (mb) mb.textContent = t('lbl-manual');
+  // Highlight active flag button
+  var fi = document.getElementById('flag-fi');
+  var en = document.getElementById('flag-en');
+  if (fi) fi.style.opacity = LANG === 'fi' ? '1' : '0.4';
+  if (en) en.style.opacity = LANG === 'en' ? '1' : '0.4';
+}
+
+function setLang(lang) {
+  LANG = lang;
+  localStorage.setItem('blang', lang);
+  applyLang();
+  renderCars();
+}
+
+function toggleLang() { setLang(LANG === 'fi' ? 'en' : 'fi'); }
+
+// ── localStorage cars ─────────────────────────────────────────
+function getCars() {
+  try { return JSON.parse(localStorage.getItem('bl_cars') || '[]'); }
+  catch(e) { return []; }
+}
+function saveCars(cars) {
+  localStorage.setItem('bl_cars', JSON.stringify(cars));
+}
+function upsertCar(car) {
+  var cars = getCars().filter(function(c) { return c.vin !== car.vin; });
+  cars.unshift(Object.assign({}, car, {saved_at: Date.now()}));
+  saveCars(cars.slice(0, 10));
+}
+function deleteCarByVin(vin) {
+  saveCars(getCars().filter(function(c) { return c.vin !== vin; }));
+  renderCars();
+}
+function addRecentPart(vin, part) {
+  var cars = getCars();
+  var car = cars.find(function(c) { return c.vin === vin; });
+  if (car) {
+    var parts = (car.recent_parts || []).filter(function(p) { return p !== part; });
+    parts.unshift(part);
+    car.recent_parts = parts.slice(0, 5);
+    saveCars(cars);
+  }
+}
+
+function renderCars() {
+  var cars = getCars();
+  var el = document.getElementById('cars-list');
+  if (!cars.length) {
+    el.innerHTML = '<div class="empty-cars">' + t('lbl-nocars') + '</div>';
+    return;
+  }
+  el.innerHTML = cars.map(function(c) {
+    var detail = [c.year, c.engine, c.fuel].filter(Boolean).join(' · ');
+    var extra = [c.body, c.transmission].filter(Boolean).join(' · ');
+    var parts = c.recent_parts && c.recent_parts.length ? '<div class="car-card-parts">' + c.recent_parts.slice(0,3).join(', ') + '</div>' : '';
+    return '<div class="car-card" onclick="loadCar(' + JSON.stringify(c).replace(/"/g,'&quot;') + ')">'
+      + '<button class="car-card-del" onclick="event.stopPropagation();deleteCarByVin(\'' + c.vin + '\')">×</button>'
+      + '<div class="car-card-name">' + (c.make||'?') + ' ' + (c.model||'') + '</div>'
+      + '<div class="car-card-detail">' + detail + '</div>'
+      + (extra ? '<div class="car-card-detail">' + extra + '</div>' : '')
+      + parts + '</div>';
+  }).join('');
+}
+
+// ── State ─────────────────────────────────────────────────────
+var currentCar = null;
+var currentPartInfo = null;
+var clarifyPending = null;
+
+// ── Utils ─────────────────────────────────────────────────────
+function showToast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 2000);
+}
+
+function setLoading(show, text) {
+  document.getElementById('loading-bar').classList.toggle('show', show);
+  document.getElementById('loading-text').textContent = text || '';
+}
+
+function showErr(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+}
+
+function api(path, body) {
+  return fetch(path, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(function(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    });
+  });
+}
+
+// ── Mode toggle ────────────────────────────────────────────────
+function setMode(mode) {
+  document.getElementById('mode-vin').style.display = mode === 'vin' ? '' : 'none';
+  document.getElementById('mode-manual').style.display = mode === 'manual' ? '' : 'none';
+  document.getElementById('btn-vin-mode').classList.toggle('active', mode === 'vin');
+  document.getElementById('btn-man-mode').classList.toggle('active', mode === 'manual');
+}
+
+// ── VIN Lookup ─────────────────────────────────────────────────
+function doVinLookup() {
+  var vin = document.getElementById('vin-input').value.trim().toUpperCase();
+  var country = document.getElementById('country-sel').value;
+  if (!vin) { showErr('vin-err', t('err-vin-required')); return; }
+  if (vin.length !== 17) { showErr('vin-err', t('err-vin-length')); return; }
+  showErr('vin-err', '');
+  var btn = document.getElementById('btn-lookup');
+  btn.disabled = true;
+  btn.textContent = t('loading-vin');
+  setLoading(true, t('loading-vin'));
+  api('/api/lookup-vin', {vin: vin, country: country})
+    .then(function(car) {
+      currentCar = car;
+      upsertCar(car);
+      showCarResult(car);
+      renderCars();
+    })
+    .catch(function(e) { showErr('vin-err', e.message); })
+    .finally(function() {
+      btn.disabled = false;
+      btn.textContent = t('btn-lookup');
+      setLoading(false);
+    });
+}
+
+// ── Manual entry ───────────────────────────────────────────────
+// ── Car database for autocomplete ─────────────────────────────
+var CAR_DB = {
+  'Saab':       ['9-3','9-5','9-7X','900','9000','9-4X'],
+  'Volvo':      ['V40','V50','V60','V70','V90','S40','S60','S80','S90','XC40','XC60','XC70','XC90','C30','C70'],
+  'Toyota':     ['Yaris','Corolla','Camry','Auris','Avensis','RAV4','Land Cruiser','Hilux','Prius','C-HR','Aygo','Verso','Proace'],
+  'Volkswagen': ['Golf','Polo','Passat','Tiguan','T-Roc','Touareg','Sharan','Touran','Caddy','Transporter','Arteon','ID.3','ID.4'],
+  'BMW':        ['1-sarja','2-sarja','3-sarja','4-sarja','5-sarja','6-sarja','7-sarja','X1','X2','X3','X4','X5','X6','Z4','i3','i4'],
+  'Mercedes-Benz': ['A-sarja','B-sarja','C-sarja','E-sarja','S-sarja','CLA','GLA','GLC','GLE','GLS','Vito','Sprinter'],
+  'Audi':       ['A1','A2','A3','A4','A5','A6','A7','A8','Q2','Q3','Q5','Q7','Q8','TT','R8'],
+  'Ford':       ['Fiesta','Focus','Mondeo','Puma','Kuga','Edge','S-Max','Galaxy','Transit','EcoSport','Mustang'],
+  'Opel':       ['Corsa','Astra','Insignia','Mokka','Crossland','Grandland','Zafira','Meriva','Antara','Vectra'],
+  'Skoda':      ['Fabia','Octavia','Superb','Karoq','Kodiaq','Kamiq','Scala','Enyaq'],
+  'Renault':    ['Clio','Megane','Laguna','Scenic','Kadjar','Captur','Koleos','Trafic','Master','Zoe'],
+  'Peugeot':    ['208','308','508','2008','3008','5008','Partner','Expert','Boxer'],
+  'Citroen':    ['C1','C2','C3','C4','C5','Berlingo','Jumpy','C3 Aircross','C5 Aircross'],
+  'Fiat':       ['500','Punto','Panda','Tipo','Bravo','Doblo','Ducato'],
+  'Honda':      ['Jazz','Civic','Accord','CR-V','HR-V','FR-V'],
+  'Nissan':     ['Micra','Note','Juke','Qashqai','X-Trail','Navara','Leaf','Ariya'],
+  'Hyundai':    ['i10','i20','i30','i40','Tucson','Santa Fe','Ioniq','Kona','ix35'],
+  'Kia':        ['Picanto','Rio','Ceed','Stinger','Sportage','Sorento','Telluride','EV6','Niro'],
+  'Mazda':      ['Mazda2','Mazda3','Mazda6','CX-3','CX-5','CX-60','MX-5'],
+  'Mitsubishi': ['Colt','Carisma','Lancer','Outlander','ASX','Eclipse Cross','L200','Pajero'],
+  'Subaru':     ['Impreza','Legacy','Outback','Forester','XV','BRZ'],
+  'Suzuki':     ['Swift','Vitara','S-Cross','Jimny','Baleno','Ignis'],
+  'Seat':       ['Ibiza','Leon','Ateca','Arona','Tarraco','Alhambra'],
+  'Land Rover': ['Defender','Discovery','Discovery Sport','Freelander','Range Rover','Range Rover Sport','Evoque'],
+  'Jeep':       ['Renegade','Compass','Cherokee','Grand Cherokee','Wrangler'],
+  'Lexus':      ['IS','ES','GS','LS','UX','NX','RX','GX','LX'],
+  'Alfa Romeo': ['147','156','159','Giulia','Stelvio','Mito','Giulietta'],
+  'Porsche':    ['911','Cayenne','Macan','Panamera','Taycan','Boxster','Cayman'],
+  'Dacia':      ['Sandero','Logan','Duster','Lodgy','Dokker'],
+};
+
+var MAKES = Object.keys(CAR_DB).sort();
+
+// ── Autocomplete engine ────────────────────────────────────────
+var acActiveIndex = -1;
+
+function showAcList(id, items, onSelect) {
+  var list = document.getElementById(id);
+  if (!items.length) { list.classList.remove('open'); return; }
+  list.innerHTML = items.slice(0,8).map(function(item, i) {
+    return '<div class="ac-item" data-val="'+item+'" onclick="selectAc(''+id+'',''+item+'')">'+item+'</div>';
+  }).join('');
+  list.classList.add('open');
+}
+
+function selectAc(listId, val) {
+  var list = document.getElementById(listId);
+  list.classList.remove('open');
+  if (listId === 'ac-make') {
+    document.getElementById('m-make').value = val;
+    document.getElementById('m-model').focus();
+    validateMake(document.getElementById('m-make'));
+    acModel(document.getElementById('m-model'));
+  } else if (listId === 'ac-model') {
+    document.getElementById('m-model').value = val;
+    document.getElementById('m-year').focus();
+    validateModel(document.getElementById('m-model'));
+  }
+  updatePreview();
+}
+
+function closeAllAc() {
+  document.querySelectorAll('.ac-list').forEach(function(l){ l.classList.remove('open'); });
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.ac-wrap')) closeAllAc();
+});
+
+// ── Make autocomplete ──────────────────────────────────────────
+function acMake(input) {
+  var val = input.value.trim();
+  validateMake(input);
+  if (val.length < 1) { closeAllAc(); updatePreview(); return; }
+  var matches = MAKES.filter(function(m) {
+    return m.toLowerCase().startsWith(val.toLowerCase());
+  });
+  if (!matches.length) {
+    matches = MAKES.filter(function(m) {
+      return m.toLowerCase().includes(val.toLowerCase());
+    });
+  }
+  showAcList('ac-make', matches);
+  // Auto-fill if exact match
+  if (matches.length === 1 && matches[0].toLowerCase() === val.toLowerCase()) {
+    document.getElementById('m-make').value = matches[0];
+    closeAllAc();
+  }
+  updatePreview();
+}
+
+function validateMake(input) {
+  var val = input.value.trim();
+  var hint = document.getElementById('hint-make');
+  if (!val) { hint.textContent = ''; hint.className = 'field-hint'; return; }
+  var exact = MAKES.find(function(m){ return m.toLowerCase() === val.toLowerCase(); });
+  if (exact) {
+    input.value = exact;
+    hint.textContent = 'Tunnettu merkki';
+    hint.className = 'field-hint hint-ok';
+  } else {
+    var close = MAKES.filter(function(m){ return m.toLowerCase().startsWith(val.toLowerCase()); });
+    if (close.length) {
+      hint.textContent = 'Tarkoititko: ' + close[0] + '?';
+      hint.className = 'field-hint hint-warn';
+    } else {
+      hint.textContent = 'Merkki hyväksytty';
+      hint.className = 'field-hint hint-ok';
+    }
+  }
+}
+
+// ── Model autocomplete ─────────────────────────────────────────
+function acModel(input) {
+  var make = document.getElementById('m-make').value.trim();
+  var val = input.value.trim();
+  validateModel(input);
+  // Find closest make key
+  var makeKey = MAKES.find(function(m){ return m.toLowerCase() === make.toLowerCase(); });
+  var models = makeKey ? CAR_DB[makeKey] : [];
+  if (val.length < 1) { closeAllAc(); updatePreview(); return; }
+  var matches = models.filter(function(m){
+    return m.toLowerCase().startsWith(val.toLowerCase()) || m.toLowerCase().includes(val.toLowerCase());
+  });
+  showAcList('ac-model', matches);
+  updatePreview();
+}
+
+function validateModel(input) {
+  var val = input.value.trim();
+  var make = document.getElementById('m-make').value.trim();
+  var hint = document.getElementById('hint-model');
+  if (!val) { hint.textContent = ''; hint.className = 'field-hint'; return; }
+  var makeKey = MAKES.find(function(m){ return m.toLowerCase() === make.toLowerCase(); });
+  var models = makeKey ? CAR_DB[makeKey] : [];
+  var exact = models.find(function(m){ return m.toLowerCase() === val.toLowerCase(); });
+  if (exact) {
+    hint.textContent = 'Tunnettu malli';
+    hint.className = 'field-hint hint-ok';
+  } else if (models.length) {
+    hint.textContent = 'Malli hyväksytty';
+    hint.className = 'field-hint hint-ok';
+  } else {
+    hint.textContent = '';
+    hint.className = 'field-hint';
+  }
+}
+
+// ── Year validation ────────────────────────────────────────────
+function validateYear(input) {
+  var val = parseInt(input.value);
+  var hint = document.getElementById('hint-year');
+  if (!input.value) { hint.textContent = ''; hint.className = 'field-hint'; updatePreview(); return; }
+  var now = new Date().getFullYear();
+  if (val < 1970 || val > now) {
+    hint.textContent = 'Vuosi ' + 1970 + '–' + now;
+    hint.className = 'field-hint hint-err';
+    input.style.borderColor = 'var(--red)';
+  } else if (val < 1990) {
+    hint.textContent = 'Vanha auto — varaosien saatavuus voi olla rajattu';
+    hint.className = 'field-hint hint-warn';
+    input.style.borderColor = '';
+  } else {
+    hint.textContent = 'Vuosi ok';
+    hint.className = 'field-hint hint-ok';
+    input.style.borderColor = '';
+  }
+  updatePreview();
+}
+
+// ── Engine validation ──────────────────────────────────────────
+function validateEngine(input) {
+  var val = input.value.trim();
+  var hint = document.getElementById('hint-engine');
+  if (!val) { hint.textContent = ''; hint.className = 'field-hint'; updatePreview(); return; }
+  // Common engine format: 1.6, 2.3T, 2.0 TDI, 3.0 V6 etc
+  var hasDisp = /\d+[.,]\d/.test(val);
+  if (hasDisp) {
+    hint.textContent = 'Moottori ok';
+    hint.className = 'field-hint hint-ok';
+  } else if (/^\d+$/.test(val)) {
+    hint.textContent = 'Lisää desimaalipiste, esim. ' + val + '.0';
+    hint.className = 'field-hint hint-warn';
+  } else {
+    hint.textContent = '';
+    hint.className = 'field-hint';
+  }
+  updatePreview();
+}
+
+// ── Live preview ───────────────────────────────────────────────
+function updatePreview() {
+  var make  = document.getElementById('m-make').value.trim();
+  var model = document.getElementById('m-model').value.trim();
+  var year  = document.getElementById('m-year').value.trim();
+  var eng   = document.getElementById('m-engine').value.trim();
+  var prev  = document.getElementById('manual-preview');
+  var txt   = document.getElementById('preview-text');
+  if (!make && !model) { prev.style.display = 'none'; return; }
+  var parts = [year, make, model, eng].filter(Boolean);
+  txt.textContent = parts.join(' ');
+  prev.style.display = '';
+}
+
+// Attach preview update to selects too
+['m-fuel','m-trans','m-body'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('change', updatePreview);
+});
+
+function doManualSave() {
+  var make = document.getElementById('m-make').value.trim();
+  var model = document.getElementById('m-model').value.trim();
+  if (!make || !model) { showToast(t('err-make-required')); return; }
+  var car = {
+    make: make, model: model,
+    year: document.getElementById('m-year').value.trim(),
+    engine: document.getElementById('m-engine').value.trim(),
+    fuel: document.getElementById('m-fuel').value,
+    transmission: document.getElementById('m-trans').value,
+    body: document.getElementById('m-body').value,
+    country: document.getElementById('m-country').value,
+    vin: 'MANUAL-' + make.toUpperCase() + '-' + model.toUpperCase(),
+    confidence: 'manual'
+  };
+  currentCar = car;
+  upsertCar(car);
+  showCarResult(car);
+  renderCars();
+}
+
+// ── Show car result ────────────────────────────────────────────
+function showCarResult(car) {
+  document.getElementById('car-name').textContent = (car.make||'') + ' ' + (car.model||'');
+  document.getElementById('car-detail').textContent = [car.year, car.engine, car.fuel].filter(Boolean).join(' · ');
+  var fields = [
+    {k:'field-year',v:car.year},{k:'field-engine',v:car.engine},{k:'field-fuel',v:car.fuel},
+    {k:'field-trans',v:car.transmission},{k:'field-body',v:car.body},
+    {k:'field-color',v:car.color},{k:'field-muni',v:car.municipality},{k:'field-note',v:car.note}
+  ].filter(function(f){ return f.v; });
+  document.getElementById('car-extra').innerHTML = fields.map(function(f) {
+    return '<div><div class="car-field-label">' + t(f.k) + '</div><div class="car-field-value">' + f.v + '</div></div>';
+  }).join('');
+  var vin = car.vin || '';
+  document.getElementById('car-vin').textContent = vin.startsWith('MANUAL') ? t('manual-entry') : 'VIN: ' + vin;
+  var conf = car.confidence || 'low';
+  var badge = document.getElementById('car-badge');
+  badge.textContent = conf === 'manual' ? t('lbl-manual') : conf.toUpperCase();
+  badge.className = 'badge ' + (conf === 'high' || conf === 'manual' ? 'badge-high' : 'badge-low');
+  document.getElementById('car-result').classList.add('show');
+  document.getElementById('part-block').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+  showRecentParts(car.recent_parts || []);
+}
+
+function loadCar(car) {
+  currentCar = car;
+  document.getElementById('vin-input').value = car.vin || '';
+  document.getElementById('country-sel').value = car.country || 'FI';
+  showCarResult(car);
+  showErr('vin-err', '');
+}
+
+function showRecentParts(parts) {
+  var el = document.getElementById('recent-parts');
+  if (!parts.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<span style="font-size:11px;color:var(--text3);width:100%">' + t('recent-label') + '</span>'
+    + parts.map(function(p) {
+        return '<span class="recent-chip" onclick="setPartSearch(\'' + p + '\')">' + p + '</span>';
+      }).join('');
+}
+
+function setPartSearch(part) {
+  document.getElementById('part-input').value = part;
+  doPartSearch();
+}
+
+// ── Ambiguous parts ────────────────────────────────────────────
+var AMBIGUOUS = {
+  'brake pad':'Kumpi akseli? Etu vai taka?',
+  'brake pads':'Kumpi akseli? Etu vai taka?',
+  'brake disc':'Kumpi akseli? Etu vai taka?',
+  'brake discs':'Kumpi akseli? Etu vai taka?',
+  'shock absorber':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'shock':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'strut':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'control arm':'Mikä? (etu-vasen / etu-oikea / taka-vasen / taka-oikea, ylä / ala)',
+  'ball joint':'Ylä- vai alahelaniviiin? ' + t('clarify-suffix'),
+  'wheel bearing':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'tie rod':'Kumpi puoli? Sisä vai ulko?',
+  'caliper':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'cv axle':'Kumpi puoli? Vasen vai oikea?',
+  'cv joint':'Kumpi puoli? Vasen vai oikea?',
+  'headlight':'Kumpi puoli? Vasen vai oikea?',
+  'taillight':'Kumpi puoli? Vasen vai oikea?',
+  'mirror':'Kumpi puoli? Vasen vai oikea?',
+  'spring':'Mikä kulma? (etu-vasen / etu-oikea / taka-vasen / taka-oikea)',
+  'oxygen sensor':'Kumpi? Ennen katalysaattoria vai jälkeen? Pankki 1 vai 2?',
+  'o2 sensor':'Kumpi? Ennen katalysaattoria vai jälkeen?',
+  'wiper blade':'Kumpi? Kuljettaja, matkustaja vai taka?',
+};
+var CLARIFY_SKIP = ['front','rear','left','right','upper','lower','inner','outer','etu','taka','vasen','oikea','ylä','ala'];
+
+function needsClarify(part) {
+  var low = part.toLowerCase();
+  if (CLARIFY_SKIP.some(function(w){ return low.includes(w); })) return null;
+  for (var key in AMBIGUOUS) {
+    if (low.includes(key)) return {key: key, q: AMBIGUOUS[key]};
+  }
+  return null;
+}
+
+// ── Part Search ────────────────────────────────────────────────
+function doPartSearch() {
+  if (!currentCar) { showToast(t('err-vin-required')); return; }
+  var part = document.getElementById('part-input').value.trim();
+  if (!part) return;
+
+  // Clarification check
+  var cl = needsClarify(part);
+  if (cl && !clarifyPending) {
+    clarifyPending = cl;
+    var el = document.getElementById('clarify');
+    el.innerHTML = '<strong>📍 ' + cl.q + '</strong><br><small style="color:var(--text3);margin-top:4px;display:block">Lisää tarkennus ja paina haku uudelleen</small>';
+    el.classList.add('show');
+    return;
+  }
+  clarifyPending = null;
+  document.getElementById('clarify').classList.remove('show');
+  runSearch(part);
+}
+
+function runSearch(part) {
+  // Auto-translate Finnish part names to English for better API results
+  var partEN = translatePartToEN(part);
+  if (partEN !== part) {
+    console.log('Translated part: ' + part + ' → ' + partEN);
+    part = partEN;
+  }
+
+  setLoading(true, t('loading-oem'));
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('btn-search').disabled = true;
+
+  // Step 1: get part info
+  api('/api/part-info', {part: part, car: currentCar})
+    .then(function(info) {
+      currentPartInfo = info;
+      renderPartHeader(info, part);
+      if (currentCar && currentCar.vin) {
+        addRecentPart(currentCar.vin, part);
+        renderCars();
+      }
+      setLoading(true, t('loading-all'));
+      // Step 2: parallel fetch
+      return Promise.all([
+        api('/api/prices', {part: part, car: currentCar, part_info: info}).catch(function(){ return []; }),
+        api('/api/youtube', {part: part, car: currentCar}).catch(function(){ return []; }),
+        api('/api/diagrams', {part: part, car: currentCar}).catch(function(){ return {urls:[]}; }),
+        api('/api/part-image', {part: part, car: currentCar}).catch(function(){ return {}; }),
+      ]);
+    })
+    .then(function(results) {
+      renderPrices(results[0]);
+      renderVideos(results[1]);
+      renderDiagrams(results[2], part);
+      if (results[3] && results[3].url) setPartImage(results[3].url);
+      document.getElementById('results').classList.add('show');
+      document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+    })
+    .catch(function(e) { showToast('Virhe: ' + e.message); })
+    .finally(function() {
+      setLoading(false);
+      document.getElementById('btn-search').disabled = false;
+    });
+}
+
+// ── Render functions ───────────────────────────────────────────
+function renderPartHeader(info, rawPart) {
+  document.getElementById('res-name').textContent = info.canonical_name || rawPart;
+  document.getElementById('res-desc').textContent = info.description || '';
+  var meta = '';
+  if (info.difficulty) meta += '<span class="meta-chip"><span>' + info.difficulty + '</span></span>';
+  if (info.avg_labor_hours) meta += '<span class="meta-chip"><span>' + info.avg_labor_hours + '</span></span>';
+  document.getElementById('res-meta').innerHTML = meta;
+
+  // Part numbers
+  var nums = info.part_numbers || [];
+  var pnBlock = document.getElementById('pn-block');
+  if (nums.length) {
+    var pnHtml = nums.map(function(p) {
+      var num   = typeof p === 'object' ? p.number  : p;
+      var brand = typeof p === 'object' ? (p.brand  || '') : '';
+      var type  = typeof p === 'object' ? (p.type   || 'OEM') : 'OEM';
+      var qual  = typeof p === 'object' ? (p.quality || '') : '';
+      var isOEM = type.toUpperCase().includes('OEM');
+      var qualBadge = qual ? '<span class="pn-qual">' + qual + '</span>' : '';
+      return '<div class="pn-row">'
+        + '<span class="pn-type ' + (isOEM ? 'pn-oem' : 'pn-am') + '">' + type + '</span>'
+        + '<span class="pn-num">' + num + '</span>'
+        + '<div class="pn-right"><span class="pn-brand">' + brand + '</span>'
+        + qualBadge
+        + '<span class="pn-copy" onclick="copyNum(\'' + num + '\')" title="Kopioi">⧉</span></div>'
+        + '</div>';
+    }).join('');
+    if (info.oem_note) {
+      pnHtml += '<p style="font-size:12px;color:var(--text3);margin-top:10px;line-height:1.5">' + info.oem_note + '</p>';
+    }
+    document.getElementById('pn-list').innerHTML = pnHtml;
+    pnBlock.style.display = '';
+  } else {
+    pnBlock.style.display = 'none';
+  }
+
+  // Tools
+  var tools = info.tools_needed || [];
+  var toolsBox = document.getElementById('tools-box');
+  if (tools.length) {
+    document.getElementById('tools-list').innerHTML = tools.map(function(t) {
+      return '<span class="tool-chip">' + t + '</span>';
+    }).join('');
+    toolsBox.style.display = '';
+  } else { toolsBox.style.display = 'none'; }
+
+  // Guide
+  var steps = (info.replacement_summary || '').split('\n').filter(function(l){ return l.trim(); });
+  document.getElementById('guide-steps').innerHTML = steps.length ? steps.map(function(line) {
+    var m = line.match(/^(\d+)\.\s*(.*)/);
+    if (m) return '<div class="guide-step"><div class="step-num">' + m[1] + '</div><div class="step-text">' + m[2] + '</div></div>';
+    return '<div class="guide-step"><div class="step-num" style="visibility:hidden">·</div><div class="step-text" style="color:var(--text2)">' + line.trim() + '</div></div>';
+  }).join('') : '<div class="empty">Ei ohjetta saatavilla</div>';
+
+  // Reset to guide tab
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab==='guide'); });
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.toggle('active', p.id==='tab-guide'); });
+}
+
+function setPartImage(url) {
+  var wrap = document.getElementById('part-img');
+  var img = document.createElement('img');
+  img.src = url;
+  img.alt = 'Part';
+  img.onerror = function(){ wrap.innerHTML = ''; };
+  wrap.innerHTML = '';
+  wrap.appendChild(img);
+}
+
+function copyNum(num) {
+  navigator.clipboard.writeText(num).then(function(){ showToast(t('copied')); });
+}
+
+function renderPrices(prices) {
+  var el = document.getElementById('prices-list');
+  if (!prices || !prices.length) {
+    el.innerHTML = '<div class="empty">' + t('no-prices') + '</div>';
+    return;
+  }
+  var priced = prices.filter(function(p){ return p.price != null; });
+  var cheapest = priced.length ? priced.reduce(function(a,b){ return a.price < b.price ? a : b; }) : null;
+  el.innerHTML = prices.map(function(p) {
+    var isBest = cheapest && p.shop === cheapest.shop;
+    var priceStr = p.price != null ? '€' + p.price.toFixed(2) : t('see-site');
+    var ship = p.shipping && p.shipping !== '—' ? '<div class="price-ship">' + p.shipping + '</div>' : '';
+    var partName = p.part ? '<div class="price-part">' + p.part + '</div>' : '';
+    return '<a href="' + (p.url||'#') + '" target="_blank" rel="noopener" class="price-card' + (isBest?' best':'') + '">'
+      + '<div class="price-shop">'
+      + '<div class="price-shop-name">' + p.shop + (isBest ? '<span class="best-badge">' + t('cheapest') + '</span>' : '') + '</div>'
+      + partName + ship + '</div>'
+      + '<div class="price-amt' + (p.price==null?' muted':'') + '">' + priceStr + '</div>'
+      + '</a>';
+  }).join('');
+}
+
+function renderVideos(videos) {
+  var el = document.getElementById('videos-list');
+  if (!videos || !videos.length) {
+    el.innerHTML = '<div class="empty">' + t('no-videos') + '</div>';
+    return;
+  }
+  el.innerHTML = videos.map(function(v) {
+    var id = (v.url||'').match(/v=([^&]+)/);
+    var thumb = id ? 'https://img.youtube.com/vi/' + id[1] + '/mqdefault.jpg' : '';
+    return '<a href="' + (v.url||'#') + '" target="_blank" rel="noopener" class="video-card">'
+      + '<div class="video-thumb">' + (thumb ? '<img src="'+thumb+'" alt="">' : '▶') + '</div>'
+      + '<div><div class="video-title">' + v.title + '</div></div>'
+      + '</a>';
+  }).join('');
+}
+
+// Lightbox state
+var lightboxImages = [];
+var lightboxIndex = 0;
+
+function openLightbox(index) {
+  lightboxIndex = index;
+  updateLightbox();
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightboxEl() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function lightboxNav(dir) {
+  lightboxIndex = (lightboxIndex + dir + lightboxImages.length) % lightboxImages.length;
+  updateLightbox();
+}
+
+function updateLightbox() {
+  var item = lightboxImages[lightboxIndex];
+  if (!item) return;
+  document.getElementById('lightbox-img').src = item.url;
+  document.getElementById('lightbox-title').textContent = item.title || '';
+}
+
+document.addEventListener('keydown', function(e) {
+  var lb = document.getElementById('lightbox');
+  if (!lb.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightboxEl();
+  if (e.key === 'ArrowLeft') lightboxNav(-1);
+  if (e.key === 'ArrowRight') lightboxNav(1);
+});
+
+function renderDiagrams(data, part) {
+  var el = document.getElementById('diagrams-content');
+  var images = (data && data.images) || [];
+  var car = currentCar || {};
+  var q = encodeURIComponent((car.make||'') + ' ' + (car.model||'') + ' ' + part + ' exploded view diagram');
+  var gLink = 'https://www.google.com/search?tbm=isch&q=' + q;
+  lightboxImages = images;
+  var galleryHtml = '';
+  if (images.length) {
+    galleryHtml = '<div class="diagram-gallery">'
+      + images.map(function(img, i) {
+          return '<div class="diagram-thumb" onclick="openLightbox(' + i + ')">'
+            + '<img src="' + img.url + '" alt="" onerror="hideEl(this.parentElement)">'
+            + '<div class="diagram-thumb-title">' + (img.title || 'Kaavio ' + (i+1)) + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div>';
+  } else {
+    galleryHtml = '<div class="empty">' + t('no-diagrams') + '</div>';
+  }
+  el.innerHTML = galleryHtml + '<a href="' + gLink + '" target="_blank" class="diagram-link">' + t('diagram-search') + '</a>';
+}
+
+
+// ── Tabs ───────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Event listeners ────────────────────────────────────────────
+document.getElementById('btn-lookup').addEventListener('click', doVinLookup);
+document.getElementById('vin-input').addEventListener('keydown', function(e){ if(e.key==='Enter') doVinLookup(); });
+document.getElementById('btn-search').addEventListener('click', doPartSearch);
+document.getElementById('part-input').addEventListener('keydown', function(e){ if(e.key==='Enter') doPartSearch(); });
+document.getElementById('btn-manual').addEventListener('click', doManualSave);
+
+// ── Service Worker ────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function(e) {
+    console.log('SW registration failed:', e);
+  });
+}
+
+// ── Init ───────────────────────────────────────────────────────
+applyLang();
+renderCars();
+</script>
+</body>
+</html>

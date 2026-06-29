@@ -1819,7 +1819,7 @@ function openTuning(car) {
       else renderTuning(data);
     })
     .catch(function(e) {
-      body.innerHTML = '<div class="empty">' + (LANG==='fi'?'Virhe tietojen hakemisessa':'Error fetching tuning data') + ': ' + e.message + '</div>';
+      body.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
     });
 }
 
@@ -1831,7 +1831,9 @@ function closeTuning() {
 function renderTuning(data) {
   var body = document.getElementById('tuning-body');
   if (!data || data.error) {
-    body.innerHTML = '<div class="empty">' + (data && data.error ? data.error : 'Ei tietoja') + '</div>';
+    var msg = (data && data.error ? data.error : 'Ei tietoja');
+    var raw = data && data.raw_response ? '<pre style="font-size:10px;color:var(--text3);margin-top:8px;white-space:pre-wrap">' + data.raw_response + '</pre>' : '';
+    body.innerHTML = '<div class="empty">' + msg + raw + '</div>';
     return;
   }
   var EFFECTS = {

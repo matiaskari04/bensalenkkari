@@ -1362,7 +1362,7 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         result.setdefault('cosmetics', [])
         return result
     except Exception as e:
-        return {'error': str(e), 'levels': [], 'cosmetics': [], 'summary': 'Parse error - try again'}
+        return {'error': str(e), 'raw_response': raw[:500], 'levels': [], 'cosmetics': [], 'summary': 'Parse error - try again'}
 
 def recommend_prices(prices: list[dict]) -> dict:
     """Pick cheapest, best quality, fastest shipping, and happy medium."""

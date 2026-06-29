@@ -21,6 +21,7 @@ get_part_info         = _mod.get_part_info
 fetch_prices          = _mod.fetch_prices
 search_youtube        = _mod.search_youtube
 get_exploded_view_images = _mod.get_exploded_view_images
+get_tuning_info          = _mod.get_tuning_info
 AMBIGUOUS_PARTS       = None   # resolved at request time
 
 app = Flask(__name__)
@@ -196,6 +197,16 @@ def api_save_car():
         return jsonify({"error": "vin required"}), 400
     upsert_car(car, vin)
     return jsonify({"ok": True})
+
+@app.route("/api/tuning", methods=["POST"])
+def api_tuning():
+    data = request.json or {}
+    car  = data.get("car") or {}
+    try:
+        info = get_tuning_info(car)
+        return jsonify(info)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/delete-car", methods=["POST"])
 def api_delete_car():

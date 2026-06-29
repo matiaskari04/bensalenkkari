@@ -1273,6 +1273,119 @@ def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) ->
     ]
 
 
+def get_tuning_info(car: dict) -> dict:
+    """
+    Get car-specific tuning information using AI + web search context.
+    Returns structured tuning mods with HP/torque gains, costs and ratings.
+    """
+    make   = car.get("make", "")
+    model  = car.get("model", "")
+    year   = car.get("year", "")
+    engine = car.get("engine", "")
+    car_str = f"{year} {make} {model} {engine}".strip()
+
+    # Search for real tuning data
+    search_context = ""
+    if SERPER_API_KEY:
+        try:
+            queries = [
+                f"{make} {model} {engine} tuning stage 1 2 3 horsepower gains remap",
+                f"{make} {model} {engine} tuning mods prices handling suspension",
+            ]
+            snippets = []
+            for q in queries:
+                r = requests.post(
+                    "https://google.serper.dev/search",
+                    headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
+                    json={"q": q, "num": 5},
+                    timeout=10,
+                )
+                if r.status_code == 200:
+                    for item in r.json().get("organic", [])[:4]:
+                        snippets.append(item.get("snippet", ""))
+            if snippets:
+                search_context = "\n\nReal tuning data from web:\n" + "\n".join(snippets[:6])
+        except Exception:
+            pass
+
+    system = "You are an automotive tuning expert. Respond with valid JSON only. No markdown. Write all text fields in Finnish."
+
+    prompt = f"""Car: {car_str}
+{search_context}
+
+Return a JSON object with tuning modifications for this specific car:
+{{
+  "stock_hp": 185,
+  "stock_torque": 280,
+  "summary": "Lyhyt kuvaus auton virityspotentiaalista suomeksi",
+  "mods": [
+    {{
+      "name": "ECU-remap Stage 1",
+      "category": "engine",
+      "description": "Kuvaile mod suomeksi — mitä tehdään ja miksi",
+      "hp_gain": 50,
+      "torque_gain": 100,
+      "hp_after": 235,
+      "torque_after": 380,
+      "price_eur": 300,
+      "price_range": "200-400",
+      "difficulty": "Professional",
+      "reversible": true,
+      "worth_it": "Ehdottomasti",
+      "worth_score": 5,
+      "effects": {{
+        "power": 5,
+        "torque": 4,
+        "handling": 0,
+        "fuel_economy": -1,
+        "reliability": -1,
+        "daily_usability": 4
+      }},
+      "requires": [],
+      "notes": "Paras lähtökohta viritykselle. Helppo ja edullinen."
+    }}
+  ]
+}}
+
+Include 6-10 mods covering:
+- ECU remap stages (1, 2, 3 if applicable)
+- Intake / air filter upgrade
+- Exhaust / downpipe
+- Turbo upgrade (if turbo car)
+- Suspension / springs / dampers
+- Brake upgrade
+- Intercooler (if applicable)
+- Tyres / wheel upgrade
+
+For effects scale: -3 (much worse) to 5 (huge improvement), 0 = no change.
+worth_score: 1-5 (1=not worth it, 5=must do).
+Use realistic prices in EUR for Finnish market.
+Only include mods that actually make sense for this specific car."""
+
+    raw = claude(prompt, system=system, max_tokens=2500)
+    raw = claude(prompt, system=system, max_tokens=2500)
+    try:
+        clean = "".join(ch for ch in raw if ord(ch) >= 32 or ch in "\n\t\r")
+        start = clean.find("{")
+        depth = 0
+        end = -1
+        for i, ch in enumerate(clean[start:], start):
+            if ch == "{": depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        result = json.loads(clean[start:end])
+        result.setdefault("stock_hp", 0)
+        result.setdefault("stock_torque", 0)
+        result.setdefault("summary", "")
+        result.setdefault("mods", [])
+        return result
+    except Exception as e:
+        return {"error": str(e), "raw": raw[:200], "mods": [], "summary": "Virhe tietojen hakemisessa"}
+
+
 def recommend_prices(prices: list[dict]) -> dict:
     """Pick cheapest, best quality, fastest shipping, and happy medium."""
     priced = [p for p in prices if p.get("price") is not None]

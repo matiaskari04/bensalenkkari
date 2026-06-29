@@ -789,6 +789,14 @@ var TR = {
     'field-trans':'Vaihteisto','field-body':'Korimalli','field-color':'Väri',
     'field-muni':'Kunta','field-note':'Huomio',
     'clarify-suffix':'(tai kirjoita molemmat puolet)',
+    'opt-petrol':'Bensiini','opt-diesel':'Diesel','opt-electric':'Sähkö','opt-hybrid':'Hybridi','opt-phev':'Ladattava hybridi',
+    'opt-manual':'Manuaali','opt-automatic':'Automaatti','opt-semiauto':'Puoliautomaatti','opt-cvt':'CVT',
+    'opt-sedan':'Sedan','opt-estate':'Farmari','opt-hatch':'Hatchback','opt-suv':'SUV',
+    'opt-coupe':'Coupe','opt-conv':'Avoauto','opt-van':'Pakettiauto','opt-pickup':'Pickup',
+    'hint-year-ok':'Vuosi ok','hint-year-old':'Vanha auto — varaosien saatavuus voi olla rajattu',
+    'hint-year-bad':'Vuosi 1970–','hint-make-ok':'Tunnettu merkki','hint-make-acc':'Merkki hyväksytty',
+    'hint-make-suggest':'Tarkoititko: ','hint-model-ok':'Tunnettu malli','hint-model-acc':'Malli hyväksytty',
+    'hint-engine-ok':'Moottori ok','hint-engine-dec':'Lisää desimaalipiste, esim. ',
   },
   en: {
     'logo-sub':'Auto parts lookup','lbl-mycars':'My Cars','lbl-nocars':'No saved cars yet — look up a VIN below',
@@ -811,6 +819,14 @@ var TR = {
     'field-trans':'Transmission','field-body':'Body','field-color':'Color',
     'field-muni':'Municipality','field-note':'Note',
     'clarify-suffix':'(or type "both sides")',
+    'opt-petrol':'Petrol','opt-diesel':'Diesel','opt-electric':'Electric','opt-hybrid':'Hybrid','opt-phev':'Plug-in Hybrid',
+    'opt-manual':'Manual','opt-automatic':'Automatic','opt-semiauto':'Semi-automatic','opt-cvt':'CVT',
+    'opt-sedan':'Sedan','opt-estate':'Estate/Wagon','opt-hatch':'Hatchback','opt-suv':'SUV',
+    'opt-coupe':'Coupe','opt-conv':'Convertible','opt-van':'Van','opt-pickup':'Pickup',
+    'hint-year-ok':'Year OK','hint-year-old':'Old car — parts availability may be limited',
+    'hint-year-bad':'Year 1970–','hint-make-ok':'Known make','hint-make-acc':'Make accepted',
+    'hint-make-suggest':'Did you mean: ','hint-model-ok':'Known model','hint-model-acc':'Model accepted',
+    'hint-engine-ok':'Engine OK','hint-engine-dec':'Add decimal point, e.g. ',
   }
 };
 
@@ -917,6 +933,21 @@ function applyLang() {
   var en = document.getElementById('flag-en');
   if (fi) fi.style.opacity = LANG === 'fi' ? '1' : '0.4';
   if (en) en.style.opacity = LANG === 'en' ? '1' : '0.4';
+  // Translate select options
+  var OPT_MAP = {
+    'Petrol':'opt-petrol','Diesel':'opt-diesel','Electric':'opt-electric',
+    'Hybrid':'opt-hybrid','Plug-in Hybrid':'opt-phev',
+    'Manual':'opt-manual','Automatic':'opt-automatic',
+    'Semi-automatic':'opt-semiauto','CVT':'opt-cvt',
+    'Sedan':'opt-sedan','Estate/Wagon':'opt-estate','Hatchback':'opt-hatch',
+    'SUV':'opt-suv','Coupe':'opt-coupe','Convertible':'opt-conv',
+    'Van':'opt-van','Pickup':'opt-pickup'
+  };
+  document.querySelectorAll('select option').forEach(function(opt) {
+    var key = OPT_MAP[opt.value];
+    if (key) opt.textContent = t(key);
+    if (opt.value === '') opt.textContent = t('select') || 'Select...';
+  });
 }
 
 function setLang(lang) {
@@ -1157,15 +1188,15 @@ function validateMake(input) {
   var exact = MAKES.find(function(m){ return m.toLowerCase() === val.toLowerCase(); });
   if (exact) {
     input.value = exact;
-    hint.textContent = 'Tunnettu merkki';
+    hint.textContent = t('hint-make-ok');
     hint.className = 'field-hint hint-ok';
   } else {
     var close = MAKES.filter(function(m){ return m.toLowerCase().startsWith(val.toLowerCase()); });
     if (close.length) {
-      hint.textContent = 'Tarkoititko: ' + close[0] + '?';
+      hint.textContent = t('hint-make-suggest') + close[0] + '?';
       hint.className = 'field-hint hint-warn';
     } else {
-      hint.textContent = 'Merkki hyväksytty';
+      hint.textContent = t('hint-make-acc');
       hint.className = 'field-hint hint-ok';
     }
   }
@@ -1196,10 +1227,10 @@ function validateModel(input) {
   var models = makeKey ? CAR_DB[makeKey] : [];
   var exact = models.find(function(m){ return m.toLowerCase() === val.toLowerCase(); });
   if (exact) {
-    hint.textContent = 'Tunnettu malli';
+    hint.textContent = t('hint-model-ok');
     hint.className = 'field-hint hint-ok';
   } else if (models.length) {
-    hint.textContent = 'Malli hyväksytty';
+    hint.textContent = t('hint-model-acc');
     hint.className = 'field-hint hint-ok';
   } else {
     hint.textContent = '';
@@ -1214,15 +1245,15 @@ function validateYear(input) {
   if (!input.value) { hint.textContent = ''; hint.className = 'field-hint'; updatePreview(); return; }
   var now = new Date().getFullYear();
   if (val < 1970 || val > now) {
-    hint.textContent = 'Vuosi ' + 1970 + '–' + now;
+    hint.textContent = t('hint-year-bad') + now;
     hint.className = 'field-hint hint-err';
     input.style.borderColor = 'var(--red)';
   } else if (val < 1990) {
-    hint.textContent = 'Vanha auto — varaosien saatavuus voi olla rajattu';
+    hint.textContent = t('hint-year-old');
     hint.className = 'field-hint hint-warn';
     input.style.borderColor = '';
   } else {
-    hint.textContent = 'Vuosi ok';
+    hint.textContent = t('hint-year-ok');
     hint.className = 'field-hint hint-ok';
     input.style.borderColor = '';
   }
@@ -1237,10 +1268,10 @@ function validateEngine(input) {
   // Common engine format: 1.6, 2.3T, 2.0 TDI, 3.0 V6 etc
   var hasDisp = /\d+[.,]\d/.test(val);
   if (hasDisp) {
-    hint.textContent = 'Moottori ok';
+    hint.textContent = t('hint-engine-ok');
     hint.className = 'field-hint hint-ok';
   } else if (/^\d+$/.test(val)) {
-    hint.textContent = 'Lisää desimaalipiste, esim. ' + val + '.0';
+    hint.textContent = t('hint-engine-dec') + val + '.0';
     hint.className = 'field-hint hint-warn';
   } else {
     hint.textContent = '';

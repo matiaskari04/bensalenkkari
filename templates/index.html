@@ -1903,6 +1903,8 @@ var MOD_SEARCH_TERMS = {
 };
 
 function searchModPart(modName) {
+  // Called from onclick with data attribute
+  if (modName && modName.dataset) modName = modName.dataset.mod;
   // Close tuning modal
   closeTuning();
 
@@ -2036,7 +2038,7 @@ function renderTuning(data) {
       +'<span class="mod-badge">'+(mod.difficulty||'')+'</span></div>'
       +(mod.notes?'<div class="mod-notes">'+mod.notes+'</div>':'')
       +(mod.requires&&mod.requires.length?(Array.isArray(mod.requires)?'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires.join(', ')+'</div>':'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires+'</div>'):'')
-      +'<button class="mod-search-btn" onclick="searchModPart('+JSON.stringify(mod.name)+')">'
+      +'<button class="mod-search-btn" onclick="searchModPart(this.dataset.mod)" data-mod="'+(mod.name||'').replace(/"/g,'&quot;')+'">' 
       +(LANG==="fi"?"Hae osa":"Search Part")
       +'</button>'
       +'</div>';

@@ -210,6 +210,7 @@ def _call_groq(prompt: str, system: str, max_tokens: int) -> str:
         "max_tokens": max_tokens,
         "messages": messages,
         "temperature": 0.3,
+        "response_format": {"type": "json_object"},
     }
     # Retry up to 3 times on connection errors
     for attempt in range(3):
@@ -1308,8 +1309,8 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         except Exception:
             pass
 
-    lang_instruction = "Write ALL text fields (name, description, summary, notes, effect, everything) in FINNISH. Do not use English anywhere in the text fields." if lang == "fi" else "Write ALL text fields in ENGLISH. Do not use Finnish anywhere in the text fields."
-    system = f"You are an automotive tuning expert. Respond with valid JSON only. No markdown. {lang_instruction}"
+    lang_instruction = "Write ALL text fields (name, description, summary, notes, effect, everything) in FINNISH. Do not use English anywhere in text fields." if lang == "fi" else "Write ALL text fields in ENGLISH. Do not use Finnish anywhere in text fields."
+    system = f"You are an automotive tuning expert. You MUST respond with valid RFC 8259 JSON only. EVERY string value MUST be in double quotes. No unquoted values. No markdown. {lang_instruction}"
 
     prompt = (
         f"Car: {car_str}\n"

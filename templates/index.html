@@ -48,6 +48,8 @@ input,select{font-family:inherit}
 .car-card-parts{font-size:11px;color:var(--text3);margin-top:4px}
 .car-card-del{position:absolute;top:8px;right:8px;color:var(--text3);font-size:18px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .car-card-del:hover{color:var(--red)}
+.car-card-tune{display:block;width:100%;margin-top:10px;background:var(--amber);color:#000;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;transition:opacity .15s,transform .1s;font-family:inherit}
+.car-card-tune:active{opacity:.8;transform:scale(.97)}
 .empty-cars{color:var(--text3);font-size:13px;padding:8px 0}
 
 /* Block */
@@ -894,7 +896,10 @@ function renderCars() {
       + '<div class="car-card-detail">' + detail + '</div>'
       + (extra ? '<div class="car-card-detail">' + extra + '</div>' : '')
       + parts
-      + '<button class="car-card-tune" onclick="event.stopPropagation();openTuning(this.dataset.car)" data-car="' + JSON.stringify(c).replace(/"/g,'&quot;') + '">' + (LANG==='fi'?'Viritys':'Tuning') + '</button>'
+      + parts
+      + '<button class="car-card-tune" onclick="event.stopPropagation();openTuningByVin(\'' + (c.vin||'').replace(/'/g,'') + '\')">'
+      + (LANG==='fi'?'Viritys':'Tuning')
+      + '</button></div>';
       + '</div>';
   }).join('');
 }
@@ -1708,13 +1713,14 @@ function renderCosmetics(data) {
   }).join('');
 }
 
+function openTuningByVin(vin) {
+  var cars = getCars();
+  var car = cars.find(function(c){ return c.vin === vin; }) || currentCar || {};
+  openTuning(car);
+}
+
 function openTuning(car) {
-  if (typeof car === 'string') {
-    try { car = JSON.parse(car); } catch(e) {}
-  }
-  if (car && car.currentTarget) {
-    try { car = JSON.parse(car.currentTarget.dataset.car || '{}'); } catch(e) { car = {}; }
-  }
+  if (!car || typeof car !== 'object') return;
   haptic('light');
   tuningCar = car;
   var modal = document.getElementById('tuning-modal');

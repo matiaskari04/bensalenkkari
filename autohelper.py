@@ -1311,58 +1311,59 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
     lang_instruction = "Write ALL text fields (name, description, summary, notes, effect, everything) in FINNISH. Do not use English anywhere in the text fields." if lang == "fi" else "Write ALL text fields in ENGLISH. Do not use Finnish anywhere in the text fields."
     system = f"You are an automotive tuning expert. Respond with valid JSON only. No markdown. {lang_instruction}"
 
-    _COSMETIC_EXAMPLE = '{"name":"Alufellit 18\\\"","category":"wheels","description":"desc","price_eur":900,"price_range":"500-2000","difficulty":"Easy","effect":"Dramaattinen vaikutus","worth_score":4,"popular_brands":["OZ Racing","BBS"]}'
-    _MOD_EXAMPLE = '{"name":"ECU-remap","category":"engine","description":"desc","hp_gain":50,"torque_gain":100,"price_eur":300,"price_range":"200-400","difficulty":"Professional","reversible":true,"worth_score":5,"effects":{"power":5,"torque":4,"handling":0,"fuel_economy":-1,"reliability":-1,"daily_usability":4},"requires":[],"notes":"Paras lähtökohta."}'
-    prompt = f"""Car: {car_str}
-{search_context}
-
-Return ONLY a JSON object (no markdown) for this car with:
-- stock_hp, stock_torque (integers)
-- summary (string, Finnish)
-- cosmetics (array of cosmetic mods)
-- levels (array of 3 tuning stages)
-
-Cosmetic item format: {_COSMETIC_EXAMPLE}
-Include 6-10 cosmetics: alloy wheels, lowering springs/coilovers, window tint, body kit/lip/spoiler, wrap/paint, LED lights, interior (wheel/pedals/knob), exhaust tip, debadging.
-
-Tuning mod format: {_MOD_EXAMPLE}
-Stage 1 (bolt-on): remap, air filter, cat-back exhaust. 2-4 mods.
-Stage 2 (hardware): downpipe, intercooler, suspension, brakes. 2-4 mods.
-Stage 3 (major): turbo upgrade, fueling, internals, coilovers. 2-4 mods.
-
-Each level needs: level(int), name, description, total_hp, total_torque, total_cost_eur, mods[]
-Effects scale -3 to 5. worth_score 1-5. Prices EUR. All text in Finnish."""
+    prompt = (
+        f"Car: {car_str}\n"
+        f"Language: {lang}\n"
+        f"{search_context}\n\n"
+        "Return a JSON object for tuning this car. Use this exact structure:\n"
+        "{ stock_hp: int, stock_torque: int, summary: string,\n"
+        "  cosmetics: [ { name, category, description, price_eur, price_range, difficulty, effect, worth_score, popular_brands } ],\n"
+        "  levels: [ { level, name, description, total_hp, total_torque, total_cost_eur,\n"
+        "    mods: [ { name, category, description, hp_gain, torque_gain, price_eur, price_range,\n"
+        "             difficulty, reversible, worth_score, notes, requires,\n"
+        "             effects: { power, torque, handling, fuel_economy, reliability, daily_usability } } ] } ] }\n\n"
+        f"IMPORTANT: Respond in {lang} language only. No mixing languages.\n"
+        "IMPORTANT: Do NOT use double quotes inside string values. Use single quotes or rephrase.\n"
+        "Stage 1: bolt-on mods (remap, filter, cat-back). Stage 2: hardware (downpipe, intercooler, suspension). Stage 3: major work (turbo, internals).\n"
+        "2-4 mods per stage. Effects scale -3 to +5. worth_score 1-5. Prices in EUR.\n"
+        "6-10 cosmetics: wheels, lowering, tint, body kit, wrap, LEDs, interior, exhaust tip, debadging."
+    )
     raw = claude(prompt, system=system, max_tokens=2500)
     try:
-        clean = re.sub(r"```json|```", "", raw).strip()
-        clean = "".join(ch for ch in clean if ord(ch) >= 32 or ch in "\n\t\r")
-        start = clean.find("{")
-        if start == -1:
-            raise ValueError("No JSON found")
-        # Fix literal newlines inside JSON strings
-        def fix_newlines(s):
-            out, in_str, esc = [], False, False
-            for ch in s:
-                if esc: out.append(ch); esc = False; continue
-                if ch == "\\": out.append(ch); esc = True; continue
-                if ch == '"': in_str = not in_str; out.append(ch); continue
-                if in_str and ch == "\n": out.append("\\n"); continue
-                if in_str and ch == "\r": continue
-                out.append(ch)
-            return "".join(out)
-        clean = fix_newlines(clean[start:])
-        # Find outermost object
-        depth, end, in_str, esc = 0, -1, False, False
-        for i, ch in enumerate(clean):
-            if esc: esc = False; continue
-            if ch == "\\": esc = True; continue
-            if ch == '"': in_str = not in_str; continue
-            if not in_str:
-                if ch == "{": depth += 1
+        import re as _re
+        # Strip markdown
+        clean = _re.sub(r"```json|```", "", raw).strip()
+        # Remove all control chars except spaces
+        clean = "".join(ch if ord(ch) >= 32 else " " for ch in clean)
+        # Find first { and last matching }
+        depth = 0
+        start_i = clean.find("{")
+        end_i = -1
+        if start_i == -1:
+            raise ValueError("No JSON object in response")
+        # Walk char by char tracking string context
+        in_str = False
+        i = start_i
+        while i < len(clean):
+            ch = clean[i]
+            if ch == "\\" and in_str:
+                i += 2  # skip escaped char
+                continue
+            if ch == '"':
+                in_str = not in_str
+            elif not in_str:
+                if ch == "{":
+                    depth += 1
                 elif ch == "}":
                     depth -= 1
-                    if depth == 0: end = i + 1; break
-        result = json.loads(clean[:end] if end != -1 else clean)
+                    if depth == 0:
+                        end_i = i + 1
+                        break
+            i += 1
+        if end_i == -1:
+            raise ValueError("Unmatched braces in JSON")
+        json_str = clean[start_i:end_i]
+        result = json.loads(json_str)
         result.setdefault("stock_hp", 0)
         result.setdefault("stock_torque", 0)
         result.setdefault("summary", "")
@@ -1370,8 +1371,22 @@ Effects scale -3 to 5. worth_score 1-5. Prices EUR. All text in Finnish."""
         result.setdefault("cosmetics", [])
         return result
     except Exception as e:
-        return {"error": str(e), "levels": [], "cosmetics": [], "summary": "Tietojen haku epäonnistui"}
-
+        # Last resort: try to extract with regex
+        try:
+            import re as _re2
+            # Find any JSON-like structure
+            m = _re2.search(r'\{[\s\S]*\}', raw)
+            if m:
+                fixed = m.group(0)
+                # Aggressively clean: remove all chars that break JSON
+                fixed = _re2.sub(r"[\x00-\x1f\x7f]", " ", fixed)
+                result = json.loads(fixed)
+                result.setdefault("levels", [])
+                result.setdefault("cosmetics", [])
+                return result
+        except Exception:
+            pass
+        return {"error": str(e), "levels": [], "cosmetics": [], "summary": "JSON parse error — try again"}
 
 def recommend_prices(prices: list[dict]) -> dict:
     """Pick cheapest, best quality, fastest shipping, and happy medium."""

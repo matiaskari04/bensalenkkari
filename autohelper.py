@@ -293,7 +293,8 @@ def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
             print(f"  {Fore.YELLOW}⚠  {name} failed ({str(err)[:60]}) — trying next provider...{Style.RESET_ALL}")
             continue
 
-    return f"[AI error: all providers failed. Last: {last_err}]"
+    providers_tried = [name for fn, key, name in chain if key]
+    return f"[AI error: tried {', '.join(providers_tried)}. Last error: {last_err}]"
 
 
 # Keep 'claude' as an alias so the rest of the code stays unchanged
@@ -1475,12 +1476,7 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
     # Check for API errors before parsing
     if raw.startswith("[AI error:") or raw.startswith("[GROQ") or raw.startswith("[GEMINI"):
         is_rate_limit = "429" in raw or "rate limit" in raw.lower() or "Too Many" in raw
-        if is_rate_limit:
-            msg = ("Päivittäinen AI-raja ylitetty. Lisää GEMINI_API_KEY Render-asetuksiin tai yritä huomenna."
-                   if lang == "fi" else
-                   "Daily AI limit reached. Add GEMINI_API_KEY to Render settings or try tomorrow.")
-        else:
-            msg = raw[:200]
+        msg = raw[:300]
         return {"error": msg, "levels": [], "cosmetics": [], "summary": ""}
     try:
         import re as _re, json as _json

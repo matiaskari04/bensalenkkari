@@ -1844,9 +1844,16 @@ function renderTuning(data) {
     return;
   }
   var EFFECTS = {
-    power:LANG==='fi'?'Teho':'Power', torque:LANG==='fi'?'Vääntö':'Torque',
-    handling:LANG==='fi'?'Ajettavuus':'Handling', fuel_economy:LANG==='fi'?'Kulutus':'Fuel economy',
-    reliability:LANG==='fi'?'Luotettavuus':'Reliability', daily_usability:LANG==='fi'?'Arkikäyttö':'Daily use',
+    power_hp:        {label: LANG==='fi'?'Teho':'Power',        unit:'hp',     type:'real'},
+    torque_nm:       {label: LANG==='fi'?'Vääntö':'Torque',     unit:'Nm',     type:'real'},
+    handling:        {label: LANG==='fi'?'Ajettavuus':'Handling',unit:'',       type:'score'},
+    fuel_l100km:     {label: LANG==='fi'?'Kulutus':'Fuel',      unit:'l/100km',type:'fuel'},
+    reliability:     {label: LANG==='fi'?'Luotettavuus':'Reliability',unit:'', type:'score'},
+    daily_usability: {label: LANG==='fi'?'Arkikäyttö':'Daily',  unit:'',       type:'score'},
+    // Legacy fallbacks
+    power:           {label: LANG==='fi'?'Teho':'Power',        unit:'hp',     type:'real'},
+    torque:          {label: LANG==='fi'?'Vääntö':'Torque',     unit:'Nm',     type:'real'},
+    fuel_economy:    {label: LANG==='fi'?'Kulutus':'Fuel',      unit:'l/100km',type:'fuel'},
   };
   var CAT_CLASS = {engine:'cat-engine',suspension:'cat-suspension',exhaust:'cat-exhaust',brakes:'cat-brakes'};
   var CAT_LABEL = {engine:LANG==='fi'?'Moottori':'Engine',suspension:LANG==='fi'?'Alusta':'Suspension',exhaust:LANG==='fi'?'Pakoputki':'Exhaust',brakes:LANG==='fi'?'Jarrut':'Brakes',other:LANG==='fi'?'Muu':'Other'};
@@ -1865,10 +1872,32 @@ function renderTuning(data) {
     for (var s=1;s<=5;s++) stars += '<span class="worth-star'+(s<=worth?'':' empty')+'">★</span>';
     var fx = '<div class="mod-effects">';
     Object.keys(EFFECTS).forEach(function(key){
-      var val=(mod.effects||{})[key];
-      if(val===undefined||val===null)return;
-      var pct=Math.abs(val)/5*100;
-      fx+='<div class="effect-row"><span class="effect-lbl">'+EFFECTS[key]+'</span><div class="effect-bar-wrap"><div class="effect-bar '+(val>=0?'pos':'neg')+'" style="width:'+pct+'%"></div></div><span class="effect-val" style="color:'+(val>=0?'var(--green)':'var(--red)')+'">'+(val>0?'+':'')+val+'</span></div>';
+      var eff = EFFECTS[key];
+      var val = (mod.effects||{})[key];
+      if (val===undefined||val===null) return;
+      var num = parseFloat(val) || 0;
+      var isPos, displayVal, barPct;
+      if (eff.type === 'real') {
+        // Real units: +20 hp, +40 Nm
+        isPos = num > 0;
+        displayVal = (num > 0 ? '+' : '') + num + ' ' + eff.unit;
+        barPct = Math.min(Math.abs(num) / 50 * 100, 100);
+      } else if (eff.type === 'fuel') {
+        // Fuel: lower is better, +0.5 means worse
+        isPos = num < 0;
+        displayVal = (num > 0 ? '+' : '') + num + ' ' + eff.unit;
+        barPct = Math.min(Math.abs(num) / 2 * 100, 100);
+      } else {
+        // Score: -3 to +5
+        isPos = num >= 0;
+        displayVal = (num > 0 ? '+' : '') + num;
+        barPct = Math.abs(num) / 5 * 100;
+      }
+      fx += '<div class="effect-row">'
+        +'<span class="effect-lbl">'+eff.label+'</span>'
+        +'<div class="effect-bar-wrap"><div class="effect-bar '+(isPos?'pos':'neg')+'" style="width:'+barPct+'%"></div></div>'
+        +'<span class="effect-val" style="color:'+(isPos?'var(--green)':'var(--red)')+'">'+displayVal+'</span>'
+        +'</div>';
     });
     fx += '</div>';
     return '<div class="mod-card">'

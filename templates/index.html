@@ -1761,7 +1761,7 @@ function getCosmeticIcon(category, name) {
 
 function renderCosmetics(data) {
   var body = document.getElementById('tuning-body');
-  var items = data.cosmetics || [];
+  var items = ensureArray(data.cosmetics);
   if (!items.length) {
     body.innerHTML = '<div class="empty">Ei kosmetiikkatietoja</div>';
     return;
@@ -1771,8 +1771,8 @@ function renderCosmetics(data) {
     var stars = '';
     for (var s=1;s<=5;s++) stars += '<span class="worth-star'+(s<=worth?'':' empty')+'">★</span>';
     var icon = getCosmeticIcon(item.category||'', item.name||'');
-    var brands = item.popular_brands && item.popular_brands.length
-      ? '<div class="cosm-brands">'+item.popular_brands.join(' · ')+'</div>' : '';
+    var _brands = item.popular_brands; if (_brands && !Array.isArray(_brands)) _brands = String(_brands).split(',').map(function(b){return b.trim();});
+    var brands = _brands && _brands.length ? '<div class="cosm-brands">'+_brands.join(' · ')+'</div>' : '';
     return '<div class="cosm-card">'
       +'<div class="cosm-icon">'+icon+'</div>'
       +'<div class="cosm-info">'
@@ -1828,6 +1828,13 @@ function closeTuning() {
   document.body.style.overflow = '';
 }
 
+function ensureArray(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') return v.split(',').map(function(s){return s.trim();}).filter(Boolean);
+  return [];
+}
+
 function renderTuning(data) {
   var body = document.getElementById('tuning-body');
   if (!data || data.error) {
@@ -1873,12 +1880,12 @@ function renderTuning(data) {
       +'<span class="mod-badge">'+(mod.reversible?(LANG==='fi'?'Palautettavissa':'Reversible'):(LANG==='fi'?'Pysyvä':'Permanent'))+'</span>'
       +'<span class="mod-badge">'+(mod.difficulty||'')+'</span></div>'
       +(mod.notes?'<div class="mod-notes">'+mod.notes+'</div>':'')
-      +(mod.requires&&mod.requires.length?'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires.join(', ')+'</div>':'')
+      +(mod.requires&&mod.requires.length?(Array.isArray(mod.requires)?'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires.join(', ')+'</div>':'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires+'</div>'):'')
       +'</div>';
   }
-  var levels = data.levels||[];
+  var levels = ensureArray(data.levels);
   if (!levels.length && data.mods) {
-    html += (data.mods||[]).map(renderMod).join('');
+    html += ensureArray(data.mods).map(renderMod).join('');
   } else {
     levels.forEach(function(lv,idx){
       var lvc = LV_CLASS[idx]||'lv1';
@@ -1888,7 +1895,7 @@ function renderTuning(data) {
         +'<div class="level-info"><div class="level-name">'+(lv.name||'Stage '+(idx+1))+'</div><div class="level-desc">'+(lv.description||'')+'</div></div>'
         +'<div class="level-stats">'+(lv.total_hp?'<div class="level-hp">'+lv.total_hp+' hp</div>':'')+(lv.total_cost_eur?'<div class="level-cost">~€'+lv.total_cost_eur.toLocaleString()+'</div>':'')+'</div>'
         +'</div>'
-        +(lv.mods||[]).map(renderMod).join('')
+        +ensureArray(lv.mods).map(renderMod).join('')
         +'</div>';
     });
   }

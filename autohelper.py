@@ -744,8 +744,9 @@ def _search_oem_direct_sites(make: str, model: str, year: str, part: str) -> lis
         "Accept": "text/html,application/xhtml+xml,*/*",
     }
     sites = [
-        f"https://www.autodoc.co.uk/search?query={urllib.parse.quote_plus(f'{year} {make} {model} {part}')}",
-        f"https://www.autodoc.fi/search?query={urllib.parse.quote_plus(f'{make} {model} {part}')}",
+        f"https://www.autodoc.fi/search?query={urllib.parse.quote_plus(f'{year} {make} {model} {part}')}",
+        f"https://www.motonet.fi/fi/search?q={urllib.parse.quote_plus(f'{make} {model} {part}')}",
+        f"https://www.ak24.fi/fi/search?term={urllib.parse.quote_plus(f'{make} {model} {part}')}",
         f"https://trodo.com/en/search?q={urllib.parse.quote_plus(f'{make} {model} {part}')}",
     ]
     for url in sites:
@@ -858,7 +859,7 @@ def get_part_info(part: str, car: dict) -> dict:
     if all_found:
         zap_hint = f"\nWeb search and catalog found these OEM part numbers: {', '.join(all_found[:6])}\nUse these as the basis for part_numbers — verify which are genuine OEM vs aftermarket."
 
-    system = "You are an automotive parts specialist. You respond with valid JSON only. No markdown, no explanation. Just a raw JSON object starting with { and ending with }."
+    system = "You are an automotive parts specialist. You respond with valid JSON only. No markdown, no explanation. Just a raw JSON object starting with { and ending with }. Write description, replacement_summary and oem_note in Finnish (suomeksi). All other fields stay in English."
 
     prompt = f"""Vehicle: {car_str}
 {vin_line}
@@ -1064,13 +1065,13 @@ COUNTRY_GOOGLE = {
 }
 
 PREFERRED_SHOPS = {
-    "FI": ["motonet", "biltema", "autodoc", "trodo", "k-rauta", "raskone"],
-    "SE": ["biltema", "mekonomen", "autodoc", "motonet", "trodo"],
+    "FI": ["motonet", "ak24", "autodoc", "biltema", "trodo", "raskone", "hankkija"],
+    "SE": ["biltema", "mekonomen", "motonet", "autodoc", "trodo"],
     "NO": ["biltema", "mekonomen", "autodoc", "trodo"],
     "EE": ["ak24", "autodoc", "trodo", "biltema"],
-    "DE": ["autodoc", "kfzteile24", "autoteile24", "trodo", "ebay"],
-    "GB": ["autodoc", "eurocarparts", "halfords", "amazon"],
-    "DEFAULT": ["autodoc", "trodo", "amazon", "ebay", "biltema"],
+    "DE": ["autodoc", "kfzteile24", "autoteile24", "trodo"],
+    "GB": ["autodoc", "eurocarparts", "halfords"],
+    "DEFAULT": ["autodoc", "ak24", "motonet", "trodo", "biltema"],
 }
 
 
@@ -1189,7 +1190,7 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
         r = requests.post(
             "https://google.serper.dev/shopping",
             headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
-            json={"q": query, "gl": gl_code, "hl": hl, "num": 20},
+            json={"q": query, "gl": gl_code, "hl": hl, "num": 30},
             timeout=15,
         )
         r.raise_for_status()
@@ -1208,13 +1209,14 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
 
         results = []
         seen = {}  # shop_key -> count
+        # Major Finnish/Nordic shops get more slots
+        BOOSTED = {'motonet', 'ak24', 'autodoc', 'biltema', 'trodo'}
         for item in sorted(items, key=sort_key):
             source = item.get("source", item.get("seller", "Unknown"))
-            # Use domain root as key: "eBay - seller123" -> "ebay", "autodoc.fi" -> "autodoc"
             key = re.sub(r"[^a-z].*", "", source.lower().replace("ebay", "ebay"))
             key = key.split(".")[0][:15]
-            # Allow max 2 listings per shop
-            if seen.get(key, 0) >= 2:
+            max_per_shop = 3 if key in BOOSTED else 2
+            if seen.get(key, 0) >= max_per_shop:
                 continue
             seen[key] = seen.get(key, 0) + 1
 
@@ -1243,7 +1245,7 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 "shipping": _parse_shipping(item),
                 "note": "" if price_num else "See site",
             })
-            if len(results) >= 10:
+            if len(results) >= 16:
                 break
 
         return results or _fetch_fallback_links(query, country)

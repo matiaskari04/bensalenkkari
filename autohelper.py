@@ -1379,6 +1379,11 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         "6-8 cosmetics. requires[] must be array. popular_brands[] must be array."
     )
     raw = claude(prompt, system=system, max_tokens=2500)
+    # Check for API errors before parsing
+    if raw.startswith("[AI error:"):
+        if "429" in raw or "rate limit" in raw.lower() or "Too Many" in raw:
+            return {"error": "Groq-päivittäinen raja ylitetty. Yritä uudelleen huomenna." if True else "Daily Groq limit reached. Try again tomorrow.", "levels": [], "cosmetics": [], "summary": ""}
+        return {"error": raw[:200], "levels": [], "cosmetics": [], "summary": ""}
     try:
         import re as _re, json as _json
         s = _re.sub(r'```json|```', '', raw).strip()
@@ -1410,10 +1415,15 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         result.setdefault('summary', '')
         result.setdefault('levels', [])
         result.setdefault('cosmetics', [])
+        # Store in cache
+        import time as _t
+        _tuning_cache[cache_key] = (_t.time(), result)
+        if len(_tuning_cache) > 200:
+            oldest_key = min(_tuning_cache, key=lambda k: _tuning_cache[k][0])
+            del _tuning_cache[oldest_key]
         return result
     except Exception as e:
-        return {'error': str(e), 'raw_response': raw[:500], 'levels': [], 'cosmetics': [], 'summary': 'Parse error - try again'}
-
+        return {'error': str(e), 'levels': [], 'cosmetics': [], 'summary': 'Parse error - try again'}
 def recommend_prices(prices: list[dict]) -> dict:
     """Pick cheapest, best quality, fastest shipping, and happy medium."""
     priced = [p for p in prices if p.get("price") is not None]

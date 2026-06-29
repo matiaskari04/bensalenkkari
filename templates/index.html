@@ -1845,15 +1845,40 @@ function openTuning(car) {
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  api('/api/tuning', {car: car, lang: LANG})
-    .then(function(data) {
-      tuningData = data;
-      if (activeTuningTab === 'cosm') renderCosmetics(data);
-      else renderTuning(data);
-    })
-    .catch(function(e) {
-      body.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
-    });
+  // Check localStorage cache first (survives server restarts)
+  var _cacheKey = 'tuning:' + (car.vin||car.make||'') + ':' + LANG;
+  var _cached = null;
+  try {
+    var _raw = localStorage.getItem(_cacheKey);
+    if (_raw) {
+      var _parsed = JSON.parse(_raw);
+      // Cache valid for 24h
+      if (_parsed.ts && (Date.now() - _parsed.ts) < 86400000) {
+        _cached = _parsed.data;
+      } else {
+        localStorage.removeItem(_cacheKey);
+      }
+    }
+  } catch(e) {}
+
+  if (_cached) {
+    tuningData = _cached;
+    if (activeTuningTab === 'cosm') renderCosmetics(_cached);
+    else renderTuning(_cached);
+  } else {
+    api('/api/tuning', {car: car, lang: LANG})
+      .then(function(data) {
+        if (!data.error) {
+          try { localStorage.setItem(_cacheKey, JSON.stringify({ts: Date.now(), data: data})); } catch(e) {}
+        }
+        tuningData = data;
+        if (activeTuningTab === 'cosm') renderCosmetics(data);
+        else renderTuning(data);
+      })
+      .catch(function(e) {
+        body.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+      });
+  }
 }
 
 // Part name translations for tuning mods -> search terms

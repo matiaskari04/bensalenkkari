@@ -284,6 +284,8 @@ input,select{font-family:inherit}
 .mod-price-range{font-size:11px;color:var(--text3)}
 .mod-badge{font-size:11px;padding:3px 8px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);color:var(--text2)}
 .mod-notes{font-size:12px;color:var(--text3);margin-top:6px;line-height:1.5}
+.mod-search-btn{display:block;width:100%;margin-top:10px;background:transparent;border:1.5px solid var(--amber);color:var(--amber);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,color .15s}
+.mod-search-btn:hover,.mod-search-btn:active{background:var(--amber);color:#000}
 .cosm-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px}
 .cosm-icon{font-size:22px;width:34px;text-align:center;flex-shrink:0;margin-top:2px}
 .cosm-info{flex:1;min-width:0}
@@ -1854,6 +1856,99 @@ function openTuning(car) {
     });
 }
 
+// Part name translations for tuning mods -> search terms
+var MOD_SEARCH_TERMS = {
+  // EN
+  'performance air filter':   'performance air filter',
+  'air filter':               'performance air filter',
+  'sport air filter':         'sport air filter',
+  'cold air intake':          'cold air intake',
+  'intake':                   'air intake kit',
+  'cat-back exhaust':         'cat-back exhaust system',
+  'exhaust':                  'sport exhaust system',
+  'downpipe':                 'downpipe',
+  'sport catalyst':           'sport catalytic converter',
+  'intercooler':              'intercooler upgrade',
+  'suspension':               'lowering springs',
+  'lowering springs':         'lowering springs',
+  'coilovers':                'coilover suspension kit',
+  'sport brakes':             'sport brake pads',
+  'brake pads':               'performance brake pads',
+  'brake discs':              'sport brake discs',
+  'turbo':                    'turbocharger upgrade',
+  'oil cooler':               'oil cooler kit',
+  'spark plugs':              'iridium spark plugs',
+  'sport clutch':             'performance clutch kit',
+  'flywheel':                 'lightweight flywheel',
+  'strut brace':              'strut brace bar',
+  // FI
+  'suorituskykyinen ilmansuodatin': 'performance air filter',
+  'urheiluinen ilmansuodatin':      'sport air filter',
+  'ilmansuodatin':                  'performance air filter',
+  'kylmäilmaputki':                 'cold air intake',
+  'imuputki':                       'air intake kit',
+  'pakoputki':                      'sport exhaust system',
+  'alajohto':                       'downpipe',
+  'välijäähdytin':                  'intercooler upgrade',
+  'alustajousitus':                 'lowering springs',
+  'kierrejouset':                   'coilover suspension kit',
+  'urheilujarrupalat':              'performance brake pads',
+  'jarrupalat':                     'performance brake pads',
+  'jarrulevyt':                     'sport brake discs',
+  'turbo':                          'turbocharger upgrade',
+  'öljyjäähdytin':                  'oil cooler kit',
+  'sytytystulpat':                  'iridium spark plugs',
+  'kytkin':                         'performance clutch kit',
+  'kevytvauhtipyörä':               'lightweight flywheel',
+};
+
+function searchModPart(modName) {
+  // Close tuning modal
+  closeTuning();
+
+  // Find best search term
+  var searchTerm = modName;
+  var nameLow = modName.toLowerCase();
+
+  // Try exact match first
+  if (MOD_SEARCH_TERMS[nameLow]) {
+    searchTerm = MOD_SEARCH_TERMS[nameLow];
+  } else {
+    // Try partial match - find longest matching key
+    var bestKey = null, bestLen = 0;
+    Object.keys(MOD_SEARCH_TERMS).forEach(function(key) {
+      if (nameLow.includes(key) && key.length > bestLen) {
+        bestKey = key;
+        bestLen = key.length;
+      }
+    });
+    if (bestKey) searchTerm = MOD_SEARCH_TERMS[bestKey];
+  }
+
+  // Append make/model for specificity
+  var carStr = '';
+  if (currentCar) {
+    carStr = ((currentCar.make || '') + ' ' + (currentCar.model || '')).trim();
+  }
+  var fullSearch = carStr ? searchTerm + ' ' + carStr : searchTerm;
+
+  // Set the part input and trigger search
+  var partInput = document.getElementById('part-input');
+  if (partInput) {
+    partInput.value = fullSearch;
+    // Scroll to part search section
+    var partBlock = document.getElementById('part-block');
+    if (partBlock) {
+      partBlock.scrollIntoView({behavior: 'smooth', block: 'center'});
+      // Brief delay then trigger search so scroll completes first
+      setTimeout(function() {
+        haptic('light');
+        runSearch(fullSearch);
+      }, 400);
+    }
+  }
+}
+
 function closeTuning() {
   document.getElementById('tuning-modal').classList.remove('open');
   document.body.style.overflow = '';
@@ -1941,6 +2036,9 @@ function renderTuning(data) {
       +'<span class="mod-badge">'+(mod.difficulty||'')+'</span></div>'
       +(mod.notes?'<div class="mod-notes">'+mod.notes+'</div>':'')
       +(mod.requires&&mod.requires.length?(Array.isArray(mod.requires)?'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires.join(', ')+'</div>':'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires+'</div>'):'')
+      +'<button class="mod-search-btn" onclick="searchModPart('+JSON.stringify(mod.name)+')">'
+      +(LANG==="fi"?"Hae osa":"Search Part")
+      +'</button>'
       +'</div>';
   }
   var levels = ensureArray(data.levels);

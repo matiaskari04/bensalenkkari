@@ -1469,7 +1469,9 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         "2-4 mods per stage. worth_score 1-5 (be honest, not everything is worth 5). Prices in EUR for Finnish market.\n"
         "6-8 cosmetics. requires[] must be array. popular_brands[] must be array."
     )
+    print(f"  [tuning] calling AI, GROQ_KEY={'set' if GROQ_API_KEY else 'MISSING'}, GEMINI_KEY={'set' if GEMINI_API_KEY else 'MISSING'}")
     raw = claude(prompt, system=system, max_tokens=2500)
+    print(f"  [tuning] raw response start: {repr(raw[:150])}")
     # Check for API errors before parsing
     if raw.startswith("[AI error:") or raw.startswith("[GROQ") or raw.startswith("[GEMINI"):
         is_rate_limit = "429" in raw or "rate limit" in raw.lower() or "Too Many" in raw

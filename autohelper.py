@@ -1378,6 +1378,7 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         "2-4 mods per stage. worth_score 1-5 (be honest, not everything is worth 5). Prices in EUR for Finnish market.\n"
         "6-8 cosmetics. requires[] must be array. popular_brands[] must be array."
     )
+    raw = claude(prompt, system=system, max_tokens=2500)
     try:
         import re as _re, json as _json
         s = _re.sub(r'```json|```', '', raw).strip()

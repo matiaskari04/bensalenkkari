@@ -1330,63 +1330,39 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
     )
     raw = claude(prompt, system=system, max_tokens=2500)
     try:
-        import re as _re
-        # Strip markdown
-        clean = _re.sub(r"```json|```", "", raw).strip()
-        # Remove all control chars except spaces
-        clean = "".join(ch if ord(ch) >= 32 else " " for ch in clean)
-        # Find first { and last matching }
-        depth = 0
-        start_i = clean.find("{")
-        end_i = -1
-        if start_i == -1:
-            raise ValueError("No JSON object in response")
-        # Walk char by char tracking string context
-        in_str = False
-        i = start_i
-        while i < len(clean):
-            ch = clean[i]
-            if ch == "\\" and in_str:
-                i += 2  # skip escaped char
-                continue
-            if ch == '"':
-                in_str = not in_str
-            elif not in_str:
-                if ch == "{":
-                    depth += 1
-                elif ch == "}":
-                    depth -= 1
-                    if depth == 0:
-                        end_i = i + 1
-                        break
-            i += 1
-        if end_i == -1:
-            raise ValueError("Unmatched braces in JSON")
-        json_str = clean[start_i:end_i]
-        result = json.loads(json_str)
-        result.setdefault("stock_hp", 0)
-        result.setdefault("stock_torque", 0)
-        result.setdefault("summary", "")
-        result.setdefault("levels", [])
-        result.setdefault("cosmetics", [])
+        import re as _re, json as _json
+        s = _re.sub(r'```json|```', '', raw).strip()
+        s = _re.sub(r'[\x00-\x1f\x7f]', ' ', s)
+        # Fix single-quoted strings
+        def _fq(txt):
+            out, i = [], 0
+            while i < len(txt):
+                if txt[i] == "'" and (i == 0 or txt[i-1] in ',:[ \t\n{('):
+                    out.append('"'); i += 1
+                    while i < len(txt) and txt[i] != "'":
+                        if txt[i] == '"': out.append('\\"')
+                        else: out.append(txt[i])
+                        i += 1
+                    out.append('"'); i += 1
+                else:
+                    out.append(txt[i]); i += 1
+            return ''.join(out)
+        s = _fq(s)
+        # Fix unquoted property names
+        s = _re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', s)
+        # Fix trailing commas
+        s = _re.sub(r',\s*([}\]])', r'\1', s)
+        idx = s.find('{')
+        if idx == -1: raise ValueError('No JSON')
+        result = _json.loads(s[idx:])
+        result.setdefault('stock_hp', 0)
+        result.setdefault('stock_torque', 0)
+        result.setdefault('summary', '')
+        result.setdefault('levels', [])
+        result.setdefault('cosmetics', [])
         return result
     except Exception as e:
-        # Last resort: try to extract with regex
-        try:
-            import re as _re2
-            # Find any JSON-like structure
-            m = _re2.search(r'\{[\s\S]*\}', raw)
-            if m:
-                fixed = m.group(0)
-                # Aggressively clean: remove all chars that break JSON
-                fixed = _re2.sub(r"[\x00-\x1f\x7f]", " ", fixed)
-                result = json.loads(fixed)
-                result.setdefault("levels", [])
-                result.setdefault("cosmetics", [])
-                return result
-        except Exception:
-            pass
-        return {"error": str(e), "levels": [], "cosmetics": [], "summary": "JSON parse error — try again"}
+        return {'error': str(e), 'levels': [], 'cosmetics': [], 'summary': 'Parse error - try again'}
 
 def recommend_prices(prices: list[dict]) -> dict:
     """Pick cheapest, best quality, fastest shipping, and happy medium."""

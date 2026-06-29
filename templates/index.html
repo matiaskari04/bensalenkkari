@@ -557,6 +557,10 @@ input,select{font-family:inherit}
     <div class="tuning-close" onclick="closeTuning()">←</div>
     <h2 id="tuning-title">Viritysopas</h2>
   </div>
+  <div class="tuning-tabs">
+    <div class="tuning-tab active" id="ttab-perf" onclick="setTuningTab('perf')">Viritys</div>
+    <div class="tuning-tab" id="ttab-cosm" onclick="setTuningTab('cosm')">Kosmetiikka</div>
+  </div>
   <div class="tuning-body" id="tuning-body">
     <div class="tuning-loading"><div class="tuning-spinner"></div>Haetaan viritystietoja...</div>
   </div>
@@ -1635,6 +1639,71 @@ if ('serviceWorker' in navigator) {
 
 // ── Tuning ────────────────────────────────────────────────────
 var tuningCar = null;
+var tuningData = null;
+var activeTuningTab = 'perf';
+
+function setTuningTab(tab) {
+  activeTuningTab = tab;
+  document.getElementById('ttab-perf').classList.toggle('active', tab === 'perf');
+  document.getElementById('ttab-cosm').classList.toggle('active', tab === 'cosm');
+  if (tuningData) {
+    if (tab === 'perf') renderTuning(tuningData);
+    else renderCosmetics(tuningData);
+  }
+}
+
+var COSM_ICONS = {
+  wheels:'⚙️', tyres:'🔄', lowering:'↓', coilovers:'↕', tint:'🪟',
+  body:'🚘', wrap:'🎨', paint:'🖌', led:'💡', lighting:'💡',
+  interior:'🪑', exhaust:'💨', badge:'🏷', debadge:'✕', other:'✨'
+};
+
+function getCosmeticIcon(category, name) {
+  var low = (category + ' ' + name).toLowerCase();
+  if (low.includes('wheel') || low.includes('felg') || low.includes('alu')) return '⚙';
+  if (low.includes('lower') || low.includes('spring') || low.includes('jousi')) return '↓';
+  if (low.includes('coilover') || low.includes('kierrejousi')) return '↕';
+  if (low.includes('tint') || low.includes('tummennus') || low.includes('ikkuna')) return '◼';
+  if (low.includes('wrap') || low.includes('foliointi')) return '🎨';
+  if (low.includes('paint') || low.includes('maali') || low.includes('lakkaus')) return '🖌';
+  if (low.includes('led') || low.includes('valo')) return '○';
+  if (low.includes('interior') || low.includes('sisust') || low.includes('ohjauspyörä')) return '◎';
+  if (low.includes('exhaust') || low.includes('pakoputki') || low.includes('tip')) return '→';
+  if (low.includes('badge') || low.includes('logo') || low.includes('merkki')) return '·';
+  if (low.includes('spoiler') || low.includes('diffuser') || low.includes('lip')) return '▲';
+  return '★';
+}
+
+function renderCosmetics(data) {
+  var body = document.getElementById('tuning-body');
+  var items = data.cosmetics || [];
+  if (!items.length) {
+    body.innerHTML = '<div class="empty">Ei kosmetiikkatietoja</div>';
+    return;
+  }
+  body.innerHTML = items.map(function(item) {
+    var worth = item.worth_score || 0;
+    var stars = '';
+    for (var s=1;s<=5;s++) stars += '<span class="worth-star'+(s<=worth?'':' empty')+'">★</span>';
+    var icon = getCosmeticIcon(item.category||'', item.name||'');
+    var brands = item.popular_brands && item.popular_brands.length
+      ? '<div class="cosm-brands">'+item.popular_brands.join(' · ')+'</div>' : '';
+    return '<div class="cosm-card">'
+      +'<div class="cosm-icon">'+icon+'</div>'
+      +'<div class="cosm-info">'
+      +'<div class="cosm-name">'+item.name+'</div>'
+      +'<div class="cosm-desc">'+(item.description||'')+'</div>'
+      +(item.effect?'<div class="cosm-effect">'+item.effect+'</div>':'')
+      +brands
+      +'</div>'
+      +'<div class="cosm-right">'
+      +'<div class="cosm-price">~€'+(item.price_eur||'?')+'</div>'
+      +(item.price_range?'<div class="cosm-range">('+item.price_range+' €)</div>':'')
+      +'<div class="cosm-worth">'+stars+'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
 
 function openTuning(car) {
   haptic('light');
@@ -1644,11 +1713,19 @@ function openTuning(car) {
   var body  = document.getElementById('tuning-body');
   title.textContent = (car.make||'') + ' ' + (car.model||'') + ' ' + (car.year||'') + ' — ' + (LANG==='fi'?'Viritysopas':'Tuning Guide');
   body.innerHTML = '<div class="tuning-loading"><div class="tuning-spinner"></div>' + (LANG==='fi'?'Haetaan viritystietoja...':'Fetching tuning data...') + '</div>';
+  activeTuningTab = 'perf';
+  document.getElementById('ttab-perf').classList.add('active');
+  document.getElementById('ttab-cosm').classList.remove('active');
+  tuningData = null;
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
 
   api('/api/tuning', {car: car})
-    .then(function(data) { renderTuning(data); })
+    .then(function(data) {
+      tuningData = data;
+      if (activeTuningTab === 'cosm') renderCosmetics(data);
+      else renderTuning(data);
+    })
     .catch(function(e) {
       body.innerHTML = '<div class="empty">' + (LANG==='fi'?'Virhe tietojen hakemisessa':'Error fetching tuning data') + ': ' + e.message + '</div>';
     });
@@ -1665,106 +1742,62 @@ function renderTuning(data) {
     body.innerHTML = '<div class="empty">' + (data && data.error ? data.error : 'Ei tietoja') + '</div>';
     return;
   }
-
   var EFFECTS = {
-    power:          LANG==='fi'?'Teho':'Power',
-    torque:         LANG==='fi'?'Vääntö':'Torque',
-    handling:       LANG==='fi'?'Ajettavuus':'Handling',
-    fuel_economy:   LANG==='fi'?'Kulutus':'Fuel economy',
-    reliability:    LANG==='fi'?'Luotettavuus':'Reliability',
-    daily_usability:LANG==='fi'?'Arkikäyttö':'Daily use',
+    power:LANG==='fi'?'Teho':'Power', torque:LANG==='fi'?'Vääntö':'Torque',
+    handling:LANG==='fi'?'Ajettavuus':'Handling', fuel_economy:LANG==='fi'?'Kulutus':'Fuel economy',
+    reliability:LANG==='fi'?'Luotettavuus':'Reliability', daily_usability:LANG==='fi'?'Arkikäyttö':'Daily use',
   };
-
   var CAT_CLASS = {engine:'cat-engine',suspension:'cat-suspension',exhaust:'cat-exhaust',brakes:'cat-brakes'};
-  var CAT_LABEL = {
-    engine:     LANG==='fi'?'Moottori':'Engine',
-    suspension: LANG==='fi'?'Alusta':'Suspension',
-    exhaust:    LANG==='fi'?'Pakoputki':'Exhaust',
-    brakes:     LANG==='fi'?'Jarrut':'Brakes',
-    other:      LANG==='fi'?'Muu':'Other',
-  };
-
-  var stockHp  = data.stock_hp  || 0;
-  var stockTq  = data.stock_torque || 0;
-
+  var CAT_LABEL = {engine:LANG==='fi'?'Moottori':'Engine',suspension:LANG==='fi'?'Alusta':'Suspension',exhaust:LANG==='fi'?'Pakoputki':'Exhaust',brakes:LANG==='fi'?'Jarrut':'Brakes',other:LANG==='fi'?'Muu':'Other'};
+  var LV_CLASS = ['lv1','lv2','lv3'];
+  var stockHp = data.stock_hp||0, stockTq = data.stock_torque||0;
   var html = '';
-
-  // Stock stats
-  if (stockHp || stockTq) {
+  if (stockHp||stockTq) {
     html += '<div class="tuning-stock">'
-      + (stockHp ? '<div class="tuning-stat"><div class="tuning-stat-val">' + stockHp + ' hp</div><div class="tuning-stat-lbl">' + (LANG==='fi'?'Vakioteho':'Stock power') + '</div></div>' : '')
-      + (stockTq ? '<div class="tuning-stat"><div class="tuning-stat-val">' + stockTq + ' Nm</div><div class="tuning-stat-lbl">' + (LANG==='fi'?'Vakiovääntö':'Stock torque') + '</div></div>' : '')
-      + '</div>';
+      +(stockHp?'<div class="tuning-stat"><div class="tuning-stat-val">'+stockHp+' hp</div><div class="tuning-stat-lbl">'+(LANG==='fi'?'Vakioteho':'Stock power')+'</div></div>':'')
+      +(stockTq?'<div class="tuning-stat"><div class="tuning-stat-val">'+stockTq+' Nm</div><div class="tuning-stat-lbl">'+(LANG==='fi'?'Vakiovääntö':'Stock torque')+'</div></div>':'')
+      +'</div>';
   }
-
-  // Summary
-  if (data.summary) {
-    html += '<div class="tuning-summary">' + data.summary + '</div>';
-  }
-
-  // Mods
-  (data.mods || []).forEach(function(mod) {
-    var cat = mod.category || 'other';
-    var catClass = CAT_CLASS[cat] || 'cat-other';
-    var catLabel = CAT_LABEL[cat] || cat;
-    var worth = mod.worth_score || 0;
-    var stars = '';
-    for (var s=1;s<=5;s++) stars += '<span class="worth-star' + (s<=worth?'':' empty') + '">★</span>';
-
-    var gainHp  = mod.hp_gain  || 0;
-    var gainTq  = mod.torque_gain || 0;
-    var hpAfter = mod.hp_after || (stockHp + gainHp);
-    var tqAfter = mod.torque_after || (stockTq + gainTq);
-
-    // Effects bars
-    var effectsHtml = '<div class="mod-effects">';
-    Object.keys(EFFECTS).forEach(function(key) {
-      var val = (mod.effects || {})[key];
-      if (val === undefined || val === null) return;
-      var pct = Math.abs(val) / 5 * 100;
-      var isPos = val >= 0;
-      var color = isPos ? 'pos' : 'neg';
-      effectsHtml += '<div class="effect-row">'
-        + '<span class="effect-lbl">' + EFFECTS[key] + '</span>'
-        + '<div class="effect-bar-wrap"><div class="effect-bar ' + color + '" style="width:' + pct + '%"></div></div>'
-        + '<span class="effect-val" style="color:' + (isPos?'var(--green)':'var(--red)') + '">' + (val>0?'+':'') + val + '</span>'
-        + '</div>';
+  if (data.summary) html += '<div class="tuning-summary">'+data.summary+'</div>';
+  function renderMod(mod) {
+    var cat = mod.category||'other', worth = mod.worth_score||0, stars = '';
+    for (var s=1;s<=5;s++) stars += '<span class="worth-star'+(s<=worth?'':' empty')+'">★</span>';
+    var fx = '<div class="mod-effects">';
+    Object.keys(EFFECTS).forEach(function(key){
+      var val=(mod.effects||{})[key];
+      if(val===undefined||val===null)return;
+      var pct=Math.abs(val)/5*100;
+      fx+='<div class="effect-row"><span class="effect-lbl">'+EFFECTS[key]+'</span><div class="effect-bar-wrap"><div class="effect-bar '+(val>=0?'pos':'neg')+'" style="width:'+pct+'%"></div></div><span class="effect-val" style="color:'+(val>=0?'var(--green)':'var(--red)')+'">'+(val>0?'+':'')+val+'</span></div>';
     });
-    effectsHtml += '</div>';
-
-    // Requires
-    var reqHtml = '';
-    if (mod.requires && mod.requires.length) {
-      reqHtml = '<div class="mod-notes">⚠ ' + (LANG==='fi'?'Vaatii: ':'Requires: ') + mod.requires.join(', ') + '</div>';
-    }
-
-    // Reversible badge
-    var revBadge = '<span class="mod-badge">' + (mod.reversible ? (LANG==='fi'?'Palautettavissa':'Reversible') : (LANG==='fi'?'Pysyvä':'Permanent')) + '</span>';
-    var diffBadge = '<span class="mod-badge">' + (mod.difficulty||'') + '</span>';
-
-    html += '<div class="mod-card fade-up">'
-      + '<div class="mod-header">'
-      + '<span class="mod-cat ' + catClass + '">' + catLabel + '</span>'
-      + '<div class="mod-name">' + mod.name + '</div>'
-      + '<div class="mod-worth">' + stars + '</div>'
-      + '</div>'
-      + '<div class="mod-desc">' + (mod.description||'') + '</div>'
-      + (gainHp || gainTq ? '<div class="mod-gains">'
-        + (gainHp ? '<div class="gain-box"><div class="gain-val">+' + gainHp + ' hp</div><div class="gain-lbl">' + (hpAfter ? '→ ' + hpAfter + ' hp' : '') + '</div></div>' : '')
-        + (gainTq ? '<div class="gain-box"><div class="gain-val">+' + gainTq + ' Nm</div><div class="gain-lbl">' + (tqAfter ? '→ ' + tqAfter + ' Nm' : '') + '</div></div>' : '')
-        + '</div>' : '')
-      + effectsHtml
-      + '<div class="mod-footer">'
-      + '<div><div class="mod-price">~€' + (mod.price_eur||'?') + '</div>'
-      + (mod.price_range ? '<div class="mod-price-range">(' + mod.price_range + ' €)</div>' : '')
-      + '</div>'
-      + revBadge + diffBadge
-      + '</div>'
-      + (mod.notes ? '<div class="mod-notes">' + mod.notes + '</div>' : '')
-      + reqHtml
-      + '</div>';
-  });
-
+    fx += '</div>';
+    return '<div class="mod-card">'
+      +'<div class="mod-header"><span class="mod-cat '+(CAT_CLASS[cat]||'cat-other')+'">'+(CAT_LABEL[cat]||cat)+'</span><div class="mod-name">'+mod.name+'</div><div class="mod-worth">'+stars+'</div></div>'
+      +'<div class="mod-desc">'+(mod.description||'')+'</div>'
+      +(mod.hp_gain||mod.torque_gain?'<div class="mod-gains">'+(mod.hp_gain?'<div class="gain-box"><div class="gain-val">+'+mod.hp_gain+' hp</div><div class="gain-lbl">tehoa</div></div>':'')+(mod.torque_gain?'<div class="gain-box"><div class="gain-val">+'+mod.torque_gain+' Nm</div><div class="gain-lbl">vääntöä</div></div>':'')+'</div>':'')
+      +fx
+      +'<div class="mod-footer"><div><div class="mod-price">~€'+(mod.price_eur||'?')+'</div>'+(mod.price_range?'<div class="mod-price-range">('+mod.price_range+' €)</div>':'')+'</div>'
+      +'<span class="mod-badge">'+(mod.reversible?(LANG==='fi'?'Palautettavissa':'Reversible'):(LANG==='fi'?'Pysyvä':'Permanent'))+'</span>'
+      +'<span class="mod-badge">'+(mod.difficulty||'')+'</span></div>'
+      +(mod.notes?'<div class="mod-notes">'+mod.notes+'</div>':'')
+      +(mod.requires&&mod.requires.length?'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires.join(', ')+'</div>':'')
+      +'</div>';
+  }
+  var levels = data.levels||[];
+  if (!levels.length && data.mods) {
+    html += (data.mods||[]).map(renderMod).join('');
+  } else {
+    levels.forEach(function(lv,idx){
+      var lvc = LV_CLASS[idx]||'lv1';
+      html += '<div class="tuning-level">'
+        +'<div class="level-header '+lvc+'">'
+        +'<div class="level-badge">S'+(lv.level||idx+1)+'</div>'
+        +'<div class="level-info"><div class="level-name">'+(lv.name||'Stage '+(idx+1))+'</div><div class="level-desc">'+(lv.description||'')+'</div></div>'
+        +'<div class="level-stats">'+(lv.total_hp?'<div class="level-hp">'+lv.total_hp+' hp</div>':'')+(lv.total_cost_eur?'<div class="level-cost">~€'+lv.total_cost_eur.toLocaleString()+'</div>':'')+'</div>'
+        +'</div>'
+        +(lv.mods||[]).map(renderMod).join('')
+        +'</div>';
+    });
+  }
   body.innerHTML = html;
   haptic('success');
 }

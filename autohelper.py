@@ -1310,59 +1310,27 @@ def get_tuning_info(car: dict) -> dict:
 
     system = "You are an automotive tuning expert. Respond with valid JSON only. No markdown. Write all text fields in Finnish."
 
+    _COSMETIC_EXAMPLE = '{"name":"Alufellit 18\\\"","category":"wheels","description":"desc","price_eur":900,"price_range":"500-2000","difficulty":"Easy","effect":"Dramaattinen vaikutus","worth_score":4,"popular_brands":["OZ Racing","BBS"]}'
+    _MOD_EXAMPLE = '{"name":"ECU-remap","category":"engine","description":"desc","hp_gain":50,"torque_gain":100,"price_eur":300,"price_range":"200-400","difficulty":"Professional","reversible":true,"worth_score":5,"effects":{"power":5,"torque":4,"handling":0,"fuel_economy":-1,"reliability":-1,"daily_usability":4},"requires":[],"notes":"Paras lähtökohta."}'
     prompt = f"""Car: {car_str}
 {search_context}
 
-Return a JSON object with tuning modifications for this specific car:
-{{
-  "stock_hp": 185,
-  "stock_torque": 280,
-  "summary": "Lyhyt kuvaus auton virityspotentiaalista suomeksi",
-  "mods": [
-    {{
-      "name": "ECU-remap Stage 1",
-      "category": "engine",
-      "description": "Kuvaile mod suomeksi — mitä tehdään ja miksi",
-      "hp_gain": 50,
-      "torque_gain": 100,
-      "hp_after": 235,
-      "torque_after": 380,
-      "price_eur": 300,
-      "price_range": "200-400",
-      "difficulty": "Professional",
-      "reversible": true,
-      "worth_it": "Ehdottomasti",
-      "worth_score": 5,
-      "effects": {{
-        "power": 5,
-        "torque": 4,
-        "handling": 0,
-        "fuel_economy": -1,
-        "reliability": -1,
-        "daily_usability": 4
-      }},
-      "requires": [],
-      "notes": "Paras lähtökohta viritykselle. Helppo ja edullinen."
-    }}
-  ]
-}}
+Return ONLY a JSON object (no markdown) for this car with:
+- stock_hp, stock_torque (integers)
+- summary (string, Finnish)
+- cosmetics (array of cosmetic mods)
+- levels (array of 3 tuning stages)
 
-Include 6-10 mods covering:
-- ECU remap stages (1, 2, 3 if applicable)
-- Intake / air filter upgrade
-- Exhaust / downpipe
-- Turbo upgrade (if turbo car)
-- Suspension / springs / dampers
-- Brake upgrade
-- Intercooler (if applicable)
-- Tyres / wheel upgrade
+Cosmetic item format: {_COSMETIC_EXAMPLE}
+Include 6-10 cosmetics: alloy wheels, lowering springs/coilovers, window tint, body kit/lip/spoiler, wrap/paint, LED lights, interior (wheel/pedals/knob), exhaust tip, debadging.
 
-For effects scale: -3 (much worse) to 5 (huge improvement), 0 = no change.
-worth_score: 1-5 (1=not worth it, 5=must do).
-Use realistic prices in EUR for Finnish market.
-Only include mods that actually make sense for this specific car."""
+Tuning mod format: {_MOD_EXAMPLE}
+Stage 1 (bolt-on): remap, air filter, cat-back exhaust. 2-4 mods.
+Stage 2 (hardware): downpipe, intercooler, suspension, brakes. 2-4 mods.
+Stage 3 (major): turbo upgrade, fueling, internals, coilovers. 2-4 mods.
 
-    raw = claude(prompt, system=system, max_tokens=2500)
+Each level needs: level(int), name, description, total_hp, total_torque, total_cost_eur, mods[]
+Effects scale -3 to 5. worth_score 1-5. Prices EUR. All text in Finnish."""
     raw = claude(prompt, system=system, max_tokens=2500)
     try:
         clean = "".join(ch for ch in raw if ord(ch) >= 32 or ch in "\n\t\r")

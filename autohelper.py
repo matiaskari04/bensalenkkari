@@ -1273,7 +1273,7 @@ def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) ->
     ]
 
 
-def get_tuning_info(car: dict) -> dict:
+def get_tuning_info(car: dict, lang: str = "fi") -> dict:
     """
     Get car-specific tuning information using AI + web search context.
     Returns structured tuning mods with HP/torque gains, costs and ratings.
@@ -1308,7 +1308,8 @@ def get_tuning_info(car: dict) -> dict:
         except Exception:
             pass
 
-    system = "You are an automotive tuning expert. Respond with valid JSON only. No markdown. Write all text fields in Finnish."
+    lang_instruction = "Write ALL text fields (name, description, summary, notes, effect, everything) in FINNISH. Do not use English anywhere in the text fields." if lang == "fi" else "Write ALL text fields in ENGLISH. Do not use Finnish anywhere in the text fields."
+    system = f"You are an automotive tuning expert. Respond with valid JSON only. No markdown. {lang_instruction}"
 
     _COSMETIC_EXAMPLE = '{"name":"Alufellit 18\\\"","category":"wheels","description":"desc","price_eur":900,"price_range":"500-2000","difficulty":"Easy","effect":"Dramaattinen vaikutus","worth_score":4,"popular_brands":["OZ Racing","BBS"]}'
     _MOD_EXAMPLE = '{"name":"ECU-remap","category":"engine","description":"desc","hp_gain":50,"torque_gain":100,"price_eur":300,"price_range":"200-400","difficulty":"Professional","reversible":true,"worth_score":5,"effects":{"power":5,"torque":4,"handling":0,"fuel_economy":-1,"reliability":-1,"daily_usability":4},"requires":[],"notes":"Paras lähtökohta."}'
@@ -1333,25 +1334,43 @@ Each level needs: level(int), name, description, total_hp, total_torque, total_c
 Effects scale -3 to 5. worth_score 1-5. Prices EUR. All text in Finnish."""
     raw = claude(prompt, system=system, max_tokens=2500)
     try:
-        clean = "".join(ch for ch in raw if ord(ch) >= 32 or ch in "\n\t\r")
+        clean = re.sub(r"```json|```", "", raw).strip()
+        clean = "".join(ch for ch in clean if ord(ch) >= 32 or ch in "\n\t\r")
         start = clean.find("{")
-        depth = 0
-        end = -1
-        for i, ch in enumerate(clean[start:], start):
-            if ch == "{": depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == 0:
-                    end = i + 1
-                    break
-        result = json.loads(clean[start:end])
+        if start == -1:
+            raise ValueError("No JSON found")
+        # Fix literal newlines inside JSON strings
+        def fix_newlines(s):
+            out, in_str, esc = [], False, False
+            for ch in s:
+                if esc: out.append(ch); esc = False; continue
+                if ch == "\\": out.append(ch); esc = True; continue
+                if ch == '"': in_str = not in_str; out.append(ch); continue
+                if in_str and ch == "\n": out.append("\\n"); continue
+                if in_str and ch == "\r": continue
+                out.append(ch)
+            return "".join(out)
+        clean = fix_newlines(clean[start:])
+        # Find outermost object
+        depth, end, in_str, esc = 0, -1, False, False
+        for i, ch in enumerate(clean):
+            if esc: esc = False; continue
+            if ch == "\\": esc = True; continue
+            if ch == '"': in_str = not in_str; continue
+            if not in_str:
+                if ch == "{": depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0: end = i + 1; break
+        result = json.loads(clean[:end] if end != -1 else clean)
         result.setdefault("stock_hp", 0)
         result.setdefault("stock_torque", 0)
         result.setdefault("summary", "")
-        result.setdefault("mods", [])
+        result.setdefault("levels", [])
+        result.setdefault("cosmetics", [])
         return result
     except Exception as e:
-        return {"error": str(e), "raw": raw[:200], "mods": [], "summary": "Virhe tietojen hakemisessa"}
+        return {"error": str(e), "levels": [], "cosmetics": [], "summary": "Tietojen haku epäonnistui"}
 
 
 def recommend_prices(prices: list[dict]) -> dict:

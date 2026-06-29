@@ -777,7 +777,7 @@ var TR = {
     'lbl-fuel':'Polttoaine','lbl-trans':'Vaihteisto','lbl-body':'Korimalli',
     'lbl-searchpart':'Hae varaosa','part-placeholder':'esim. etujarrupalat, laturi...',
     'lbl-partnums':'Osanumerot','lbl-tools':'Tarvittavat työkalut',
-    'lbl-tab-guide':'Ohjeet','lbl-tab-prices':'Hinnat','lbl-tab-videos':'Videot','lbl-tab-diagrams':'Kaaviot',
+    'lbl-tab-guide':'Ohjeet','lbl-tab-prices':'Hinnat','lbl-tab-videos':'Videot','lbl-tab-diagrams':'Kaaviot','ttab-perf':'Viritys','ttab-cosm':'Kosmetiikka',
     'loading-vin':'Haetaan ajoneuvoa...','loading-oem':'Haetaan OEM-numeroita...','loading-all':'Haetaan hintoja ja videoita...',
     'err-vin-required':'Anna VIN-koodi','err-vin-length':'VIN-koodin on oltava 17 merkkiä',
     'err-make-required':'Merkki ja malli ovat pakollisia',
@@ -799,7 +799,7 @@ var TR = {
     'lbl-fuel':'Fuel','lbl-trans':'Transmission','lbl-body':'Body',
     'lbl-searchpart':'Search Part','part-placeholder':'e.g. front brake pads, alternator...',
     'lbl-partnums':'Part Numbers','lbl-tools':'Tools needed',
-    'lbl-tab-guide':'Guide','lbl-tab-prices':'Prices','lbl-tab-videos':'Videos','lbl-tab-diagrams':'Diagrams',
+    'lbl-tab-guide':'Guide','lbl-tab-prices':'Prices','lbl-tab-videos':'Videos','lbl-tab-diagrams':'Diagrams','ttab-perf':'Tuning','ttab-cosm':'Cosmetics',
     'loading-vin':'Looking up vehicle...','loading-oem':'Searching OEM numbers...','loading-all':'Fetching prices and videos...',
     'err-vin-required':'Please enter a VIN code','err-vin-length':'VIN must be exactly 17 characters',
     'err-make-required':'Make and model are required',
@@ -1803,7 +1803,7 @@ function openTuning(car) {
   var modal = document.getElementById('tuning-modal');
   var title = document.getElementById('tuning-title');
   var body  = document.getElementById('tuning-body');
-  title.textContent = (car.make||'') + ' ' + (car.model||'') + ' ' + (car.year||'') + ' — ' + (LANG==='fi'?'Viritysopas':'Tuning Guide');
+  title.textContent = (car.make||'') + ' ' + (car.model||'') + ' ' + (car.year||'');
   body.innerHTML = '<div class="tuning-loading"><div class="tuning-spinner"></div>' + (LANG==='fi'?'Haetaan viritystietoja...':'Fetching tuning data...') + '</div>';
   activeTuningTab = 'perf';
   document.getElementById('ttab-perf').classList.add('active');
@@ -1812,7 +1812,7 @@ function openTuning(car) {
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  api('/api/tuning', {car: car})
+  api('/api/tuning', {car: car, lang: LANG})
     .then(function(data) {
       tuningData = data;
       if (activeTuningTab === 'cosm') renderCosmetics(data);

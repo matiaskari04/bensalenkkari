@@ -202,8 +202,9 @@ def api_save_car():
 def api_tuning():
     data = request.json or {}
     car  = data.get("car") or {}
+    lang = data.get("lang", "fi")
     try:
-        info = get_tuning_info(car)
+        info = get_tuning_info(car, lang=lang)
         return jsonify(info)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

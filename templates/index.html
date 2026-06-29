@@ -893,7 +893,9 @@ function renderCars() {
       + '<div class="car-card-name">' + (c.make||'?') + ' ' + (c.model||'') + '</div>'
       + '<div class="car-card-detail">' + detail + '</div>'
       + (extra ? '<div class="car-card-detail">' + extra + '</div>' : '')
-      + parts + '<button class="car-card-tune" onclick="event.stopPropagation();openTuning(' + JSON.stringify(c).replace(/"/g,\'&quot;\') + ')">' + (LANG===\'fi\'?\'Viritys\':\'Tuning\') + '</button></div>';
+      + parts
+      + '<button class="car-card-tune" onclick="event.stopPropagation();openTuning(this.dataset.car)" data-car="' + JSON.stringify(c).replace(/"/g,'&quot;') + '">' + (LANG==='fi'?'Viritys':'Tuning') + '</button>'
+      + '</div>';
   }).join('');
 }
 
@@ -1013,7 +1015,9 @@ function showAcList(id, items, onSelect) {
   var list = document.getElementById(id);
   if (!items.length) { list.classList.remove('open'); return; }
   list.innerHTML = items.slice(0,8).map(function(item, i) {
-    return '<div class="ac-item" data-val="'+item+'" onclick="selectAc(''+id+'',''+item+'')">'+item+'</div>';
+    return '<div class="ac-item" data-val="'+item+'"'
+      + ' onclick="selectAc(\"'+id+'\",\"'+item+'\")"'
+      + '>'+item+'</div>';
   }).join('');
   list.classList.add('open');
 }
@@ -1427,7 +1431,6 @@ function renderPartHeader(info, rawPart) {
     if (m) return '<div class="guide-step"><div class="step-icon">' + getStepIcon(m[2]) + '</div><div style="flex:1"><div class="step-text">' + m[2] + '</div></div></div>';
     return '<div class="guide-step" style="padding-left:52px"><div class="step-text" style="color:var(--text2)">' + line.trim() + '</div></div>';
   }).join('') : '<div class="empty">Ei ohjetta saatavilla</div>';
-  }).join('') : '<div class="empty">Ei ohjetta saatavilla</div>';
 
   // Reset to guide tab
   document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab==='guide'); });
@@ -1706,6 +1709,12 @@ function renderCosmetics(data) {
 }
 
 function openTuning(car) {
+  if (typeof car === 'string') {
+    try { car = JSON.parse(car); } catch(e) {}
+  }
+  if (car && car.currentTarget) {
+    try { car = JSON.parse(car.currentTarget.dataset.car || '{}'); } catch(e) { car = {}; }
+  }
   haptic('light');
   tuningCar = car;
   var modal = document.getElementById('tuning-modal');

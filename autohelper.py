@@ -164,6 +164,9 @@ AI_PROVIDER = os.environ.get("AUTOHELPER_PROVIDER", "groq").lower()  # "anthropi
 # API keys — set via env vars (recommended) or hard-code here for quick testing
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "")
+GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL      = "gemini-2.0-flash"
+GEMINI_URL        = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 # Models
 ANTHROPIC_MODEL = "claude-haiku-4-5"          # cheapest Anthropic model; swap to claude-sonnet-4-6 for best quality
@@ -228,37 +231,72 @@ def _call_groq(prompt: str, system: str, max_tokens: int) -> str:
             raise Exception(f"Connection failed after 3 attempts: {e}")
 
 
+def _call_gemini(prompt: str, system: str, max_tokens: int) -> str:
+    if not GEMINI_API_KEY:
+        return "[GEMINI_API_KEY not set]"
+    url = GEMINI_URL.format(model=GEMINI_MODEL, key=GEMINI_API_KEY)
+    body = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "maxOutputTokens": max_tokens,
+            "temperature": 0.3,
+            "responseMimeType": "application/json",
+        },
+    }
+    if system:
+        body["systemInstruction"] = {"parts": [{"text": system}]}
+    for attempt in range(3):
+        try:
+            r = requests.post(url, json=body, timeout=45)
+            if r.status_code == 429:
+                raise Exception(f"429 Rate limit: {r.text[:100]}")
+            if not r.ok:
+                raise Exception(f"{r.status_code} {r.reason}: {r.text[:200]}")
+            data = r.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout) as e:
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+            raise Exception(f"Gemini connection failed: {e}")
+
+
 def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
     """
     Call the configured AI provider with automatic fallback.
     Primary: as configured (default Groq). On any error, retries with the other provider.
     """
+    # Build provider chain: configured primary → fallbacks in order
     if AI_PROVIDER == "anthropic":
-        primary_fn   = (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic")
-        secondary_fn = (_call_groq,      GROQ_API_KEY,      "Groq")
+        chain = [
+            (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic"),
+            (_call_groq,      GROQ_API_KEY,      "Groq"),
+            (_call_gemini,    GEMINI_API_KEY,    "Gemini"),
+        ]
     else:
-        primary_fn   = (_call_groq,      GROQ_API_KEY,      "Groq")
-        secondary_fn = (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic")
+        chain = [
+            (_call_groq,      GROQ_API_KEY,      "Groq"),
+            (_call_gemini,    GEMINI_API_KEY,    "Gemini"),
+            (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic"),
+        ]
 
-    fn, key, name = primary_fn
-    if not key:
-        # Primary has no key — go straight to secondary
-        fn, key, name = secondary_fn
+    last_err = None
+    for fn, key, name in chain:
         if not key:
-            return "[No API key set. Set GROQ_API_KEY or ANTHROPIC_API_KEY]"
+            continue
+        try:
+            result = fn(prompt, system, max_tokens)
+            # Don't count rate limit errors as success
+            if "429" in result or "Rate limit" in result:
+                raise Exception(result[:100])
+            return result
+        except Exception as err:
+            last_err = err
+            print(f"  {Fore.YELLOW}⚠  {name} failed ({str(err)[:60]}) — trying next provider...{Style.RESET_ALL}")
+            continue
 
-    try:
-        return fn(prompt, system, max_tokens)
-    except Exception as primary_err:
-        # Primary failed — try secondary
-        fb_fn, fb_key, fb_name = secondary_fn
-        if fb_key and fb_fn != fn:
-            print(f"  {Fore.YELLOW}⚠  {name} failed ({str(primary_err)[:60]}) — trying {fb_name}...{Style.RESET_ALL}")
-            try:
-                return fb_fn(prompt, system, max_tokens)
-            except Exception as secondary_err:
-                return f"[AI error: both providers failed. {name}: {primary_err} | {fb_name}: {secondary_err}]"
-        return f"[AI error: {primary_err}]"
+    return f"[AI error: all providers failed. Last: {last_err}]"
 
 
 # Keep 'claude' as an alias so the rest of the code stays unchanged

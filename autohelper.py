@@ -1035,17 +1035,53 @@ def get_exploded_view_images(part: str, car: dict) -> list[dict]:
 SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
 
 # Amazon Associates affiliate tag — set via env var or paste here
-AMAZON_TAG = os.environ.get("AMAZON_TAG", "")  # e.g. "bensalenkkari-21"
+AMAZON_TAG   = os.environ.get("AMAZON_TAG", "")
+AUTODOC_AFF  = os.environ.get("AUTODOC_AFF", "")  # e.g. "bensalenkkari"
 
 def _add_amazon_tag(url: str) -> str:
-    """Add affiliate tag to any Amazon URL."""
     if not AMAZON_TAG or not url or "amazon." not in url:
         return url
     sep = "&" if "?" in url else "?"
-    # Don't double-add
     if f"tag={AMAZON_TAG}" in url:
         return url
     return f"{url}{sep}tag={AMAZON_TAG}"
+
+def _add_autodoc_aff(url: str) -> str:
+    """Add Autodoc affiliate parameter."""
+    if not AUTODOC_AFF or not url or "autodoc." not in url:
+        return url
+    sep = "&" if "?" in url else "?"
+    if "utm_source" in url:
+        return url
+    return f"{url}{sep}utm_source={AUTODOC_AFF}&utm_medium=referral"
+
+def _clean_shop_url(url: str, source: str) -> str:
+    """
+    Fix Google Shopping redirect URLs by reconstructing direct shop URLs.
+    Google Shopping Serper results often return ibp=oshop redirect links.
+    """
+    if not url or url == "#":
+        return url
+
+    # Detect Google Shopping redirect URLs
+    is_google_redirect = ("ibp=oshop" in url or "prds=" in url or
+                          ("google.com" in url and "shopping" in url.lower()))
+
+    if not is_google_redirect:
+        # Direct URL - apply affiliate tags and return
+        if "amazon." in url.lower():
+            url = _add_amazon_tag(url)
+        if "autodoc." in url.lower():
+            url = _add_autodoc_aff(url)
+        return url
+
+    # It's a Google redirect — build a direct search URL for the shop instead
+    src = source.lower()
+    # We don't have the product URL, so link to shop search
+    # The query will be injected by the caller
+    return None  # Signal to caller to use fallback  # e.g. "bensalenkkari-21"
+
+
 
 COUNTRY_GOOGLE = {
     "FI": ("google.fi",   "EUR", "fi"),
@@ -1234,9 +1270,29 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 except Exception:
                     pass
 
-            item_url = item.get("link", item.get("url", "#"))
-            if "amazon." in item_url.lower():
-                item_url = _add_amazon_tag(item_url)
+            raw_url = item.get("link", item.get("url", "#"))
+            item_url = _clean_shop_url(raw_url, source)
+            # If Google redirect URL, build a direct shop search link
+            if item_url is None:
+                src_low = source.lower()
+                part_title = item.get("title", query)[:80]
+                q = urllib.parse.quote_plus(part_title)
+                if "ebay" in src_low:
+                    item_url = f"https://www.ebay.de/sch/i.html?_nkw={q}"
+                elif "autodoc" in src_low:
+                    item_url = _add_autodoc_aff(f"https://www.autodoc.fi/search?query={q}")
+                elif "motonet" in src_low:
+                    item_url = f"https://www.motonet.fi/fi/search?q={q}"
+                elif "amazon" in src_low:
+                    item_url = _add_amazon_tag(f"https://www.amazon.de/s?k={q}")
+                elif "biltema" in src_low:
+                    item_url = f"https://www.biltema.fi/fi/search?query={q}"
+                elif "trodo" in src_low:
+                    item_url = f"https://trodo.com/en/search?q={q}"
+                else:
+                    item_url = f"https://www.google.com/search?tbm=shop&q={q}"
+            if "autodoc." in (item_url or "").lower():
+                item_url = _add_autodoc_aff(item_url)
             results.append({
                 "shop": source,
                 "part": item.get("title", "")[:60],
@@ -1262,7 +1318,7 @@ def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) ->
     gsh = f"https://www.google.com/search?tbm=shop&q={q}&gl={gl}"
     return [
         {"shop": "Google Shopping",  "price": None, "url": gsh,                                                      "note": "Kaikki kaupat — klikkaa vertaillaksesi"},
-        {"shop": "Autodoc",          "price": None, "url": f"https://www.autodoc.fi/search?query={q}",               "note": "Katso sivustolta", "shipping": "3-7 days"},
+        {"shop": "Autodoc",          "price": None, "url": _add_autodoc_aff(f"https://www.autodoc.fi/search?query={q}"), "note": "Katso sivustolta", "shipping": "3-7 days"},
         {"shop": "Motonet",          "price": None, "url": f"https://www.motonet.fi/fi/search?q={q}",                "note": "Katso sivustolta", "shipping": "1-3 days (FI)"},
         {"shop": "AK24",             "price": None, "url": f"https://www.ak24.fi/fi/search?term={q}",                "note": "Katso sivustolta", "shipping": "3-5 days"},
         {"shop": "Trodo",            "price": None, "url": f"https://trodo.com/en/search?q={q}",                     "note": "Katso sivustolta", "shipping": "3-7 days"},

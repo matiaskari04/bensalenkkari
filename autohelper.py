@@ -1289,7 +1289,12 @@ def _clean_shop_url(url: str, source: str) -> str:
     # Try to extract real URL from Google redirect
     # Pattern: ...&url=https%3A%2F%2F... or ...adurl=https%3A%2F%2F...
     if "google.com" in url or "ibp=oshop" in url or "prds=" in url:
-        # If it's literally a google.com/search URL (not a redirect), return None
+        # google.com/shopping/product/{id} is a legitimate per-product comparison
+        # page (shows real sellers + prices for THIS exact product) — keep it.
+        if re.match(r"https?://www\.google\.com/shopping/product/\d+", url):
+            return url
+        # A bare google.com/search page (no embedded merchant url) is just a
+        # generic search, not specific to this product — signal fallback needed.
         if re.match(r"https?://www\.google\.com/search", url) and "adurl" not in url and "prds" not in url:
             return None
         # Try prds=...,url:https%3A%2F%2F... format
@@ -1587,19 +1592,23 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 src_low = source.lower()
                 part_title = item.get("title", query)[:80]
                 q = urllib.parse.quote_plus(part_title)
+                # OEM number is far more reliable than free-text titles on these
+                # specific shops' own search engines — use it when we have one.
+                oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else q
                 if "ebay" in src_low:
                     item_url = f"https://www.ebay.de/sch/i.html?_nkw={q}"
                 elif "autodoc" in src_low:
-                    # Autodoc search works best with part number in the URL
-                    item_url = _add_autodoc_aff(f"https://www.autodoc.fi/search?query={q}&utm_source=bensalenkkari")
+                    item_url = _add_autodoc_aff(f"https://www.autodoc.fi/search?query={oem_q}")
                 elif "motonet" in src_low:
-                    item_url = f"https://www.motonet.fi/fi/search?q={q}"
+                    item_url = f"https://www.motonet.fi/fi/search?q={oem_q}"
                 elif "amazon" in src_low:
                     item_url = _add_amazon_tag(f"https://www.amazon.de/s?k={q}")
                 elif "biltema" in src_low:
-                    item_url = f"https://www.biltema.fi/fi/search?query={q}"
+                    item_url = f"https://www.biltema.fi/fi/search?query={oem_q}"
                 elif "trodo" in src_low:
-                    item_url = f"https://trodo.com/en/search?q={q}"
+                    item_url = f"https://trodo.com/en/search?q={oem_q}"
+                elif "ak24" in src_low:
+                    item_url = f"https://www.ak24.fi/fi/search?term={oem_q}"
                 else:
                     # Build a site-specific Google search for this shop
                     # This is better than a generic search and often finds the product

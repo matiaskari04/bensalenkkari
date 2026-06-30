@@ -166,6 +166,8 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "")
 GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL      = "gemini-2.0-flash"
+_tuning_cache = {}
+TUNING_CACHE_TTL = 86400
 GEMINI_URL        = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 # Models

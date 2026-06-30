@@ -1020,11 +1020,11 @@ JSON structure:
 {{"canonical_name":"str","part_numbers":[{{"number":"str","brand":"str","type":"OEM|Aftermarket","quality":"Genuine OEM|OEM equivalent|Premium|Good|Budget"}}],"oem_note":"str","description":"str","replacement_summary":"str","difficulty":"Easy|Medium|Hard","tools_needed":["str"],"avg_labor_hours":"str","search_keywords":"comma,separated"}}
 
 Rules:
-- part_numbers: 4-6 entries, genuine OEM first then quality aftermarket (Moog/TRW/Lemforder/SKF=Premium, Febi/Meyle/Delphi=Good). Only confident numbers.
+- part_numbers: 7-10 entries, genuine OEM first then quality aftermarket (Moog/TRW/Lemforder/SKF=Premium, Febi/Meyle/Delphi=Good, Bosch/NGK/Gates/Sachs/Monroe/Mann-Filter/Valeo also welcome). Include MORE numbers than usual since these are used to search multiple parts shops — more candidates means better odds of a match. Only confident numbers, but err toward including a number if reasonably confident.
 - replacement_summary: numbered steps a beginner can follow. CRITICAL FORMAT: each step starts with "N. " and steps are separated by a literal \\n newline character within the JSON string, e.g. "1. First step text\\n2. Second step text\\n3. Third step text". Never write multiple steps in one unbroken paragraph. Include torque values in Nm, key safety steps, common mistakes, whether alignment is needed after. 6-8 steps, concise but complete.
 - All text in {text_lang} except brand/part names and the type/quality enum values."""
 
-    raw = claude(prompt, system=system, max_tokens=1300)
+    raw = claude(prompt, system=system, max_tokens=1500)
     try:
         # Strip markdown code fences and leading/trailing text
         clean = re.sub(r"```json|```", "", raw).strip()
@@ -1304,7 +1304,7 @@ def _add_autodoc_aff(url: str) -> str:
 _LAST_PRICE_DEBUG = {"log": []}
 
 
-def _http_get(url: str, timeout: int = 7):
+def _http_get(url: str, timeout: int = 5):
     """Shared GET with a normal browser UA. Returns (response_or_None, error_str_or_None)."""
     try:
         r = requests.get(
@@ -1406,95 +1406,167 @@ def _build_shop_result(shop_name: str, candidates: list, search_url: str,
 # Each adapter talks to exactly one shop and returns:
 #   {"shop": str, "results": [...], "debug": {url, status, candidates, error}}
 
-def _adapter_motonet(oem: str, part_name: str, car: dict) -> dict:
+def _try_oem_numbers(oem_numbers: list, build_url, max_tries: int = 5):
+    """
+    Try each OEM/aftermarket number in turn against a shop's search until
+    one of them returns real product candidates. A single wrong/hallucinated
+    number shouldn't sink the whole search when 5 others might be genuine.
+    Returns (candidates, search_url_used, attempts_log).
+    """
+    attempts = []
+    last_url = None
+    for num in oem_numbers[:max_tries]:
+        url = build_url(num)
+        last_url = url
+        r, err = _http_get(url)
+        if err:
+            attempts.append({"number": num, "error": err})
+            continue
+        if not r.ok:
+            attempts.append({"number": num, "error": f"HTTP {r.status_code}"})
+            continue
+        yield num, url, r, attempts
+        return
+    yield None, last_url, None, attempts
+
+
+def _adapter_motonet(oem_numbers: list, part_name: str, car: dict) -> dict:
     shop = "Motonet"
-    search_url = f"https://www.motonet.fi/fi/search?q={urllib.parse.quote_plus(oem)}"
-    debug = {"shop": shop, "url": search_url, "status": None, "candidates": 0, "error": None}
-    r, err = _http_get(search_url)
-    if err:
-        debug["error"] = err
-        return {"shop": shop, "results": _build_shop_result(shop, [], search_url, "1-3 days (FI)"), "debug": debug}
-    debug["status"] = r.status_code
-    if not r.ok:
-        debug["error"] = f"HTTP {r.status_code}"
-        return {"shop": shop, "results": _build_shop_result(shop, [], search_url, "1-3 days (FI)"), "debug": debug}
-    # Confirmed pattern: product pages live at /tuote/{slug};product={id}
-    candidates = _find_product_links(r.text, search_url, "motonet.fi", require_path_contains="/tuote/")
+    debug = {"shop": shop, "url": None, "status": None, "candidates": 0, "error": None, "tried": []}
+    build = lambda num: f"https://www.motonet.fi/fi/search?q={urllib.parse.quote_plus(num)}"
+    candidates, last_url = [], None
+    for num in oem_numbers[:4]:
+        url = build(num)
+        last_url = url
+        r, err = _http_get(url)
+        debug["tried"].append(num)
+        if err:
+            debug["error"] = err
+            continue
+        debug["status"] = r.status_code
+        if not r.ok:
+            debug["error"] = f"HTTP {r.status_code}"
+            continue
+        found = _find_product_links(r.text, url, "motonet.fi", require_path_contains="/tuote/")
+        if found:
+            candidates = found
+            debug["url"] = url
+            debug["error"] = None
+            break
+        debug["url"] = url
     debug["candidates"] = len(candidates)
-    return {"shop": shop, "results": _build_shop_result(shop, candidates, search_url, "1-3 days (FI)"), "debug": debug}
+    return {"shop": shop, "results": _build_shop_result(shop, candidates, last_url or build(oem_numbers[0]), "1-3 days (FI)"), "debug": debug}
 
 
-def _adapter_autodoc(oem: str, part_name: str, car: dict) -> dict:
+def _adapter_autodoc(oem_numbers: list, part_name: str, car: dict) -> dict:
     shop = "Autodoc"
-    search_url = f"https://www.autodoc.fi/search?query={urllib.parse.quote_plus(oem)}"
-    debug = {"shop": shop, "url": search_url, "status": None, "candidates": 0, "error": None}
-    r, err = _http_get(search_url)
-    if err:
-        debug["error"] = err
-        return {"shop": shop, "results": _build_shop_result(shop, [], search_url, "3-7 days", _add_autodoc_aff), "debug": debug}
-    debug["status"] = r.status_code
-    if not r.ok:
-        debug["error"] = f"HTTP {r.status_code}"
-        return {"shop": shop, "results": _build_shop_result(shop, [], search_url, "3-7 days", _add_autodoc_aff), "debug": debug}
-    # Confirmed pattern: product pages live at /autonosat/{category}-{id}/{make}/{model}/...
-    candidates = _find_product_links(r.text, search_url, "autodoc.fi",
-                                      require_path_contains="/autonosat/",
-                                      extra_exclude=["/varaosat/"])
+    debug = {"shop": shop, "url": None, "status": None, "candidates": 0, "error": None, "tried": []}
+    build = lambda num: f"https://www.autodoc.fi/search?query={urllib.parse.quote_plus(num)}"
+    candidates, last_url = [], None
+    for num in oem_numbers[:4]:
+        url = build(num)
+        last_url = url
+        r, err = _http_get(url)
+        debug["tried"].append(num)
+        if err:
+            debug["error"] = err
+            continue
+        debug["status"] = r.status_code
+        if not r.ok:
+            debug["error"] = f"HTTP {r.status_code}"
+            continue
+        # Confirmed pattern: product pages live at /autonosat/{category}-{id}/{make}/{model}/...
+        found = _find_product_links(r.text, url, "autodoc.fi",
+                                     require_path_contains="/autonosat/",
+                                     extra_exclude=["/varaosat/"])
+        if found:
+            candidates = found
+            debug["url"] = url
+            debug["error"] = None
+            break
+        debug["url"] = url
     debug["candidates"] = len(candidates)
-    return {"shop": shop, "results": _build_shop_result(shop, candidates, search_url, "3-7 days", _add_autodoc_aff), "debug": debug}
+    fallback_url = last_url or build(oem_numbers[0])
+    return {"shop": shop, "results": _build_shop_result(shop, candidates, fallback_url, "3-7 days", _add_autodoc_aff), "debug": debug}
 
 
-def _adapter_ak24(oem: str, part_name: str, car: dict) -> dict:
+def _adapter_ak24(oem_numbers: list, part_name: str, car: dict) -> dict:
     shop = "AK24"
-    search_url = f"https://www.ak24.fi/fi/search?term={urllib.parse.quote_plus(oem)}"
-    debug = {"shop": shop, "url": search_url, "status": None, "candidates": 0, "error": None}
-    r, err = _http_get(search_url)
-    if err:
-        debug["error"] = err
-        return {"shop": shop, "results": _build_shop_result(shop, [], search_url, "3-5 days"), "debug": debug}
-    debug["status"] = r.status_code
-    if not r.ok:
-        debug["error"] = f"HTTP {r.status_code}"
-        return {"shop": shop, "results": _build_shop_result(shop, [], search_url, "3-5 days"), "debug": debug}
-    # No confirmed product-URL pattern yet — generic depth heuristic.
-    # If this keeps missing, the debug log will show 0 candidates and we
-    # can tune this once we see real output.
-    candidates = _find_product_links(r.text, search_url, "ak24.fi")
+    debug = {"shop": shop, "url": None, "status": None, "candidates": 0, "error": None, "tried": []}
+    build = lambda num: f"https://www.ak24.fi/fi/search?term={urllib.parse.quote_plus(num)}"
+    candidates, last_url = [], None
+    for num in oem_numbers[:4]:
+        url = build(num)
+        last_url = url
+        r, err = _http_get(url)
+        debug["tried"].append(num)
+        if err:
+            debug["error"] = err
+            continue
+        debug["status"] = r.status_code
+        if not r.ok:
+            debug["error"] = f"HTTP {r.status_code}"
+            continue
+        # No confirmed product-URL pattern yet — generic depth heuristic.
+        found = _find_product_links(r.text, url, "ak24.fi")
+        if found:
+            candidates = found
+            debug["url"] = url
+            debug["error"] = None
+            break
+        debug["url"] = url
     debug["candidates"] = len(candidates)
-    return {"shop": shop, "results": _build_shop_result(shop, candidates, search_url, "3-5 days"), "debug": debug}
+    fallback_url = last_url or build(oem_numbers[0])
+    return {"shop": shop, "results": _build_shop_result(shop, candidates, fallback_url, "3-5 days"), "debug": debug}
 
 
-def _adapter_trodo(oem: str, part_name: str, car: dict) -> dict:
+def _adapter_trodo(oem_numbers: list, part_name: str, car: dict) -> dict:
     shop = "Trodo"
-    search_url = f"https://www.trodo.com/en/search?q={urllib.parse.quote_plus(oem)}"
-    debug = {"shop": shop, "url": search_url, "status": None, "candidates": 0, "error": None}
-    r, err = _http_get(search_url)
-    if err:
-        debug["error"] = err
-        return {"shop": shop, "results": _build_shop_result(shop, [], search_url, "3-7 days"), "debug": debug}
-    debug["status"] = r.status_code
-    if not r.ok:
-        debug["error"] = f"HTTP {r.status_code}"
-        return {"shop": shop, "results": _build_shop_result(shop, [], search_url, "3-7 days"), "debug": debug}
-    candidates = _find_product_links(r.text, search_url, "trodo.com")
+    debug = {"shop": shop, "url": None, "status": None, "candidates": 0, "error": None, "tried": []}
+    build = lambda num: f"https://www.trodo.com/en/search?q={urllib.parse.quote_plus(num)}"
+    candidates, last_url = [], None
+    for num in oem_numbers[:4]:
+        url = build(num)
+        last_url = url
+        r, err = _http_get(url)
+        debug["tried"].append(num)
+        if err:
+            debug["error"] = err
+            continue
+        debug["status"] = r.status_code
+        if not r.ok:
+            debug["error"] = f"HTTP {r.status_code}"
+            continue
+        found = _find_product_links(r.text, url, "trodo.com")
+        if found:
+            candidates = found
+            debug["url"] = url
+            debug["error"] = None
+            break
+        debug["url"] = url
     debug["candidates"] = len(candidates)
-    return {"shop": shop, "results": _build_shop_result(shop, candidates, search_url, "3-7 days"), "debug": debug}
+    fallback_url = last_url or build(oem_numbers[0])
+    return {"shop": shop, "results": _build_shop_result(shop, candidates, fallback_url, "3-7 days"), "debug": debug}
 
 
 SHOP_ADAPTERS = [_adapter_motonet, _adapter_ak24, _adapter_autodoc, _adapter_trodo]
 
 
 def _run_shop_adapters(oem_numbers: list, part_name: str, car: dict):
-    """Run all known-shop adapters in parallel against the best OEM number."""
+    """
+    Run all known-shop adapters in parallel. Each adapter tries multiple
+    OEM/aftermarket numbers in sequence (not just the first one), since
+    a number that doesn't exist in one shop's catalog might exist in
+    another's, or under a different brand entirely.
+    """
     if not oem_numbers:
         return [], []
-    oem = oem_numbers[0]
     results = []
     debug_log = []
     import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(SHOP_ADAPTERS)) as ex:
-        futures = [ex.submit(fn, oem, part_name, car) for fn in SHOP_ADAPTERS]
-        for fut in concurrent.futures.as_completed(futures, timeout=12):
+        futures = [ex.submit(fn, oem_numbers, part_name, car) for fn in SHOP_ADAPTERS]
+        for fut in concurrent.futures.as_completed(futures, timeout=25):
             try:
                 out = fut.result()
                 results.extend(out["results"])

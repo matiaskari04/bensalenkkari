@@ -1465,7 +1465,7 @@ function runSearch(part) {
       document.getElementById('results').classList.add('show');
       animateResultsIn();
       haptic('success');
-      document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+      setTimeout(function(){ document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'}); }, 100);
     })
     .catch(function(e) { showToast('Virhe: ' + e.message); haptic('error'); })
     .finally(function() {
@@ -1884,151 +1884,128 @@ function openTuning(car) {
 // Tuning mod name -> specific search term
 // Key: lowercase mod name (or part of it) from AI response
 // Value: exact search term to use — be specific for performance parts
-var MOD_SEARCH_TERMS = {
-  // === INTAKE / AIR ===
-  'performance air filter':         'sport air filter panel',
-  'sport air filter':               'sport air filter panel',
-  'high-flow air filter':           'high flow air filter',
-  'cold air intake':                'cold air intake kit',
-  'short ram intake':               'short ram intake kit',
-  'intake kit':                     'performance air intake kit',
-  'air intake':                     'performance air intake kit',
-  'suorituskykyinen ilmansuodatin': 'sport air filter panel',
-  'urheilusuodatin':                'sport air filter panel',
-  'kylmäilmaputki':                 'cold air intake kit',
-  'imuputki':                       'performance air intake kit',
-  'ilmansuodatin':                  'sport air filter panel',
+// Keyword -> specific search term mapping
+// Checked in order - first match wins
+// Format: [[keywords_that_trigger], 'search term to use']
+var MOD_SEARCH_RULES = [
+  // INTAKE / AIR
+  [['cold air','kylmäilma','short ram','induction kit'],          'cold air intake induction kit'],
+  [['intake manifold','imusarjakaasutin'],                         'performance intake manifold'],
+  [['air intake','imuputki','intake kit'],                         'cold air intake induction kit'],
+  [['performance air filter','sport air filter','urheilusuodatin','suorituskykyinen ilmansuodatin'], 'sport panel air filter upgrade'],
+  [['ilmansuodatin','air filter'],                                 'sport panel air filter upgrade'],
 
-  // === EXHAUST ===
-  'cat-back exhaust':               'cat-back exhaust system',
-  'sport exhaust':                  'sport exhaust system',
-  'performance exhaust':            'performance exhaust system',
-  'exhaust manifold':               'performance exhaust manifold',
-  'headers':                        'performance exhaust headers',
-  'downpipe':                       'high flow downpipe',
-  'sport downpipe':                 'sport downpipe',
-  'decat':                          'decat pipe',
-  'urheilupakoputki':               'sport exhaust system',
-  'pakoputkisto':                   'cat-back exhaust system',
-  'alajohto':                       'high flow downpipe',
-  'pakoputki':                      'sport exhaust system',
+  // EXHAUST
+  [['cat-back','catback','pakoputkisto'],                         'cat-back exhaust system'],
+  [['downpipe','alajohto','sport downpipe'],                      'high flow sports downpipe'],
+  [['decat','de-cat','catalyst removal'],                         'decat downpipe pipe'],
+  [['exhaust manifold','headers','pakosarjakaasutin'],             'performance exhaust manifold headers'],
+  [['sport exhaust','performance exhaust','urheilupakoputki'],    'sports exhaust system'],
+  [['pakoputki','exhaust'],                                        'sports exhaust system'],
 
-  // === SUSPENSION ===
-  'coilovers':                      'coilover suspension kit',
-  'coilover':                       'coilover suspension kit',
-  'lowering springs':               'sport lowering springs',
-  'sport springs':                  'sport lowering springs',
-  'performance springs':            'sport lowering springs',
-  'adjustable coilovers':           'adjustable coilover kit',
-  'strut brace':                    'front strut brace bar',
-  'sway bar':                       'sport sway bar',
-  'anti-roll bar':                  'sport anti-roll bar',
-  'urheilujouset':                  'sport lowering springs',
-  'kierrejouset':                   'coilover suspension kit',
-  'madallussarja':                  'sport lowering springs',
-  'alustasarja':                    'coilover suspension kit',
-  'vakaajatanko':                   'sport sway bar',
+  // SUSPENSION
+  [['coilover','kierrejousi','kierrejouset','coilovers','adjustable suspension','kierrejousisetit'], 'coilover suspension kit adjustable'],
+  [['lowering spring','madallus','sport spring','urheilujousi','alustajouset','laskujouset'],  'lowering springs sport'],
+  [['strut brace','torque arm','etutuki'],                        'strut brace front'],
+  [['sway bar','anti-roll','vakaajatanko'],                       'sport sway bar anti-roll'],
+  [['shock absorber','damper','iskunvaimennin'],                   'sport shock absorber damper'],
 
-  // === BRAKES ===
-  'sport brake pads':               'performance sport brake pads',
-  'performance brake pads':         'performance sport brake pads',
-  'brake upgrade':                  'sport brake kit',
-  'big brake kit':                  'big brake upgrade kit',
-  'sport brake discs':              'sport grooved brake discs',
-  'slotted discs':                  'slotted grooved brake discs',
-  'drilled discs':                  'drilled slotted brake discs',
-  'urheilujarrupalat':              'performance sport brake pads',
-  'urheilujarrusarja':              'sport brake kit',
-  'urheilulevyt':                   'sport grooved brake discs',
-  'jarrupalat':                     'performance sport brake pads',
-  'jarrulevyt':                     'sport slotted brake discs',
+  // BRAKES
+  [['big brake','brake upgrade','jarrusarja'],                    'big brake upgrade kit'],
+  [['sport brake disc','slotted','drilled','urheilulevy'],        'sport grooved slotted brake discs'],
+  [['performance brake pad','sport brake pad','urheilujarrupala'],'performance sport brake pads'],
+  [['brake pad','jarrupala'],                                      'performance brake pads'],
+  [['brake disc','jarrulevyt'],                                    'sport brake discs'],
+  [['brake caliper','jarrusatula'],                               'sport brake caliper'],
 
-  // === INTERCOOLER / COOLING ===
-  'intercooler':                    'front mount intercooler upgrade',
-  'intercooler upgrade':            'front mount intercooler kit',
-  'fmic':                           'front mount intercooler kit',
-  'oil cooler':                     'performance oil cooler kit',
-  'välijäähdytin':                  'front mount intercooler kit',
-  'öljyjäähdytin':                  'performance oil cooler kit',
-  'jäähdytin':                      'performance radiator',
+  // INTERCOOLER / COOLING
+  [['front mount intercooler','fmic','välijäähdytin intercooler'],'front mount intercooler upgrade kit'],
+  [['intercooler'],                                                'intercooler upgrade kit'],
+  [['oil cooler','öljyjäähdytin'],                                'performance oil cooler kit'],
+  [['radiator','jäähdytin'],                                      'performance radiator upgrade'],
 
-  // === IGNITION / ENGINE ===
-  'spark plugs':                    'iridium spark plugs performance',
-  'iridium spark plugs':            'iridium spark plugs performance',
-  'performance spark plugs':        'iridium spark plugs performance',
-  'sport clutch':                   'performance clutch kit',
-  'lightweight flywheel':           'lightweight flywheel',
-  'short shifter':                  'short throw shifter',
-  'sytytystulpat':                  'iridium performance spark plugs',
-  'urheilu kytkin':                 'performance clutch kit',
-  'kevytvauhtipyörä':               'lightweight flywheel',
-  'lyhytvaihteisto':                'short throw shifter kit',
+  // TURBO / FORCED INDUCTION
+  [['hybrid turbo','turbo upgrade','bigger turbo','turbocharger upgrade'], 'hybrid turbocharger upgrade'],
+  [['blow-off valve','bov','dump valve'],                         'blow-off valve BOV'],
+  [['boost controller','wastegate'],                              'boost controller manual'],
+  [['turbo inlet','intake pipe','turbo pipe'],                    'turbo inlet pipe upgrade'],
+  [['turboahdin','turbo'],                                        'turbocharger upgrade'],
 
-  // === TURBO ===
-  'turbo upgrade':                  'turbocharger upgrade kit',
-  'hybrid turbo':                   'hybrid turbocharger',
-  'bigger turbo':                   'turbocharger upgrade',
-  'turbocharger':                   'turbocharger upgrade kit',
-  'blow-off valve':                 'blow-off valve bov',
-  'bov':                            'blow-off valve bov',
-  'boost controller':               'boost controller manual',
-  'turbo':                          'turbocharger upgrade kit',
-  'turboahdin':                     'turbocharger upgrade kit',
-  'paineventtiili':                 'blow-off valve bov',
-};
+  // IGNITION / ENGINE
+  [['iridium spark plug','performance spark plug','sytytystulppa','sytytystulpat'], 'iridium performance spark plugs'],
+  [['spark plug','sytytystulpat'],                                'iridium spark plugs performance'],
+  [['short shifter','lyhytvaihteisto'],                           'short throw shifter kit'],
+  [['lightweight flywheel','kevytvauhtipyörä'],                   'lightweight flywheel performance'],
+  [['performance clutch','sport clutch','urheilu kytkin'],        'performance clutch kit uprated'],
+  [['clutch kit','kytkinsarja'],                                  'clutch kit performance'],
+
+  // FUELING
+  [['fuel injector','suutin'],                                    'uprated fuel injectors'],
+  [['fuel pump','polttoainepumppu'],                              'performance fuel pump uprated'],
+  [['fuel pressure regulator'],                                    'adjustable fuel pressure regulator'],
+
+  // ENGINE INTERNALS
+  [['camshaft','nokkaa'],                                         'performance camshaft upgrade'],
+  [['head gasket','tiiviste'],                                    'uprated head gasket'],
+  [['con rod','connecting rod'],                                   'performance connecting rods'],
+  [['piston','mäntä'],                                            'performance pistons forged'],
+  [['oil pump','öljypumppu'],                                     'high volume oil pump'],
+
+  // ELECTRONICS / SENSORS
+  [['wideband','lambda','oxygen sensor','lambda-anturi'],         'wideband oxygen sensor kit'],
+  [['ecu remap','chip tune','obd tune','viritysohjelmisto'],      'ECU remap tuning software'],
+  [['data logger','boost gauge','turbo gauge'],                   'boost pressure gauge kit'],
+];
+
+function getModSearchTerm(modName) {
+  var low = (modName || '').toLowerCase();
+  for (var i = 0; i < MOD_SEARCH_RULES.length; i++) {
+    var keywords = MOD_SEARCH_RULES[i][0];
+    var term = MOD_SEARCH_RULES[i][1];
+    for (var j = 0; j < keywords.length; j++) {
+      if (low.includes(keywords[j])) {
+        return term;
+      }
+    }
+  }
+  // No match - return original name
+  return modName;
+}
+
 
 function searchModPart(modName) {
-  // Called from onclick with data attribute
   if (modName && modName.dataset) modName = modName.dataset.mod;
 
-  // Make sure currentCar is set from tuningCar if needed
+  // Set currentCar from tuningCar if needed
   if (!currentCar && tuningCar) {
     currentCar = tuningCar;
-    showCarResult(tuningCar);
   }
 
-  // Close tuning modal
-  closeTuning();
+  // Find best search term using keyword rules
+  var searchTerm = getModSearchTerm(modName);
 
-  // Find best search term
-  var searchTerm = modName;
-  var nameLow = (modName || '').toLowerCase();
-
-  // Try exact match first
-  if (MOD_SEARCH_TERMS[nameLow]) {
-    searchTerm = MOD_SEARCH_TERMS[nameLow];
-  } else {
-    // Try partial match - find longest matching key
-    var bestKey = null, bestLen = 0;
-    Object.keys(MOD_SEARCH_TERMS).forEach(function(key) {
-      if (nameLow.includes(key) && key.length > bestLen) {
-        bestKey = key;
-        bestLen = key.length;
-      }
-    });
-    if (bestKey) searchTerm = MOD_SEARCH_TERMS[bestKey];
-  }
-
-  // Append make/model for specificity
+  // Build full search query
   var car = currentCar || tuningCar || {};
   var carStr = ((car.make || '') + ' ' + (car.model || '')).trim();
   var fullSearch = carStr ? searchTerm + ' ' + carStr : searchTerm;
 
-  // Set the part input and trigger search
+  // Set part input silently
   var partInput = document.getElementById('part-input');
-  if (partInput) {
-    partInput.value = fullSearch;
-    // Scroll to part search section
-    var partBlock = document.getElementById('part-block');
-    if (partBlock) {
-      partBlock.scrollIntoView({behavior: 'smooth', block: 'center'});
-      // Brief delay then trigger search so scroll completes first
-      setTimeout(function() {
-        haptic('light');
-        runSearch(fullSearch);
-      }, 400);
-    }
+  if (partInput) partInput.value = fullSearch;
+
+  // Show car result silently without scrolling to top
+  if (currentCar) {
+    document.getElementById('car-result').classList.add('show');
+    document.getElementById('part-block').classList.add('show');
   }
+
+  // Close modal AFTER setting everything up
+  closeTuning();
+
+  haptic('light');
+
+  // Run search immediately - scroll to results when done
+  runSearch(fullSearch);
 }
 
 function closeTuning() {

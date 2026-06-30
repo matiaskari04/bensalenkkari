@@ -1282,29 +1282,47 @@ def _add_autodoc_aff(url: str) -> str:
 
 def _clean_shop_url(url: str, source: str) -> str:
     """
-    Fix Google Shopping redirect URLs by reconstructing direct shop URLs.
-    Google Shopping Serper results often return ibp=oshop redirect links.
+    Extract the real destination URL from Google Shopping redirect links.
+    Serper returns Google redirect URLs - we decode them to get direct shop links.
     """
     if not url or url == "#":
         return url
 
-    # Detect Google Shopping redirect URLs
-    is_google_redirect = ("ibp=oshop" in url or "prds=" in url or
-                          ("google.com" in url and "shopping" in url.lower()))
+    # Try to extract real URL from Google redirect
+    # Pattern: ...&url=https%3A%2F%2F... or ...adurl=https%3A%2F%2F...
+    if "google.com" in url or "ibp=oshop" in url or "prds=" in url:
+        # Try prds=...,url:https%3A%2F%2F... format
+        prds_match = re.search(r",url:(https?[^,&]+)", url)
+        if prds_match:
+            decoded = urllib.parse.unquote(prds_match.group(1))
+            if decoded.startswith("http") and "google.com" not in decoded:
+                url = decoded
+            else:
+                return None
+        else:
+            # Try standard query params
+            found = False
+            for param in ["adurl=", "url=", "q="]:
+                idx = url.find(param)
+                if idx != -1:
+                    raw = url[idx + len(param):]
+                    end = raw.find("&")
+                    if end != -1:
+                        raw = raw[:end]
+                    decoded = urllib.parse.unquote(raw)
+                    if decoded.startswith("http") and "google.com" not in decoded:
+                        url = decoded
+                        found = True
+                        break
+            if not found:
+                return None
 
-    if not is_google_redirect:
-        # Direct URL - apply affiliate tags and return
-        if "amazon." in url.lower():
-            url = _add_amazon_tag(url)
-        if "autodoc." in url.lower():
-            url = _add_autodoc_aff(url)
-        return url
-
-    # It's a Google redirect — build a direct search URL for the shop instead
-    src = source.lower()
-    # We don't have the product URL, so link to shop search
-    # The query will be injected by the caller
-    return None  # Signal to caller to use fallback  # e.g. "bensalenkkari-21"
+    # Apply affiliate tags
+    if "amazon." in url.lower():
+        url = _add_amazon_tag(url)
+    if "autodoc." in url.lower():
+        url = _add_autodoc_aff(url)
+    return url  # e.g. "bensalenkkari-21"
 
 
 
@@ -1525,7 +1543,10 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 except Exception:
                     pass
 
-            raw_url = item.get("link", item.get("url", "#"))
+            # Serper may return productLink or link - try both
+            raw_url = (item.get("productLink") or
+                       item.get("link") or
+                       item.get("url") or "#")
             item_url = _clean_shop_url(raw_url, source)
             # If Google redirect URL, build a direct shop search link
             if item_url is None:
@@ -1545,7 +1566,12 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 elif "trodo" in src_low:
                     item_url = f"https://trodo.com/en/search?q={q}"
                 else:
-                    item_url = f"https://www.google.com/search?tbm=shop&q={q}"
+                    # Try to build direct URL from source domain
+                    domain = re.sub(r"[^a-z0-9.-].*", "", source.lower()).strip(".")
+                    if domain and "." in domain:
+                        item_url = f"https://{domain}/search?q={q}"
+                    else:
+                        item_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(source+' '+part_title)}"
             if "autodoc." in (item_url or "").lower():
                 item_url = _add_autodoc_aff(item_url)
             results.append({

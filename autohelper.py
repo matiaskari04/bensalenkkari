@@ -1525,6 +1525,11 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
                     fi_query = f"{primary} {make} {model} {fi_part}".strip()
                     fi_results = _fetch_via_serper(fi_query, country, oem_numbers)
                     results = _merge_price_results(results, fi_results)
+            # Only fall back to the static shop list if EVERY search attempt
+            # came back genuinely empty — never let one sub-query's empty
+            # result silently overwrite real results from another sub-query.
+            if not results:
+                return _fetch_fallback_links(fallback_query, country, oem_numbers)
             return _ensure_finnish_shops(results, oem_numbers, country)
         else:
             return _fetch_fallback_links(fallback_query, country, oem_numbers)
@@ -1546,6 +1551,8 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
                     print(f"  {Fore.CYAN}🇫🇮 Also searching in Finnish: {fi_query[:60]}{Style.RESET_ALL}")
                     fi_results = _fetch_via_serper(fi_query, country)
                     results = _merge_price_results(results, fi_results)
+            if not results:
+                return _fetch_fallback_links(query, country)
             return results
         else:
             return _fetch_fallback_links(query, country)
@@ -1748,9 +1755,9 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
             if len(results) >= 16:
                 break
 
-        return results or _fetch_fallback_links(query, country)
+        return results
     except Exception:
-        return _fetch_fallback_links(query, country)
+        return []
 
 
 def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) -> list[dict]:

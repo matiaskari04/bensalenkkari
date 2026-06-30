@@ -1377,6 +1377,15 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
     engine = car.get("engine", "")
     car_str = f"{year} {make} {model} {engine}".strip()
 
+    # Check cache (24h TTL)
+    import time as _tc
+    _cache_key = f"{car_str.lower()}::{lang}"
+    _hit = _tuning_cache.get(_cache_key)
+    if _hit and (_tc.time() - _hit[0]) < TUNING_CACHE_TTL:
+        print(f'  [tuning cache HIT] {car_str}')
+        return _hit[1]
+
+
     # Step 1: Search for REAL stock specs first
     spec_context = ""
     if SERPER_API_KEY:
@@ -1511,7 +1520,7 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         result.setdefault('cosmetics', [])
         # Store in cache
         import time as _t
-        _tuning_cache[cache_key] = (_t.time(), result)
+        _tuning_cache[_cache_key] = (_t.time(), result)
         if len(_tuning_cache) > 200:
             oldest_key = min(_tuning_cache, key=lambda k: _tuning_cache[k][0])
             del _tuning_cache[oldest_key]

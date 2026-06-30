@@ -215,7 +215,6 @@ def _call_groq(prompt: str, system: str, max_tokens: int) -> str:
         "max_tokens": max_tokens,
         "messages": messages,
         "temperature": 0.3,
-        "response_format": {"type": "json_object"},
     }
     # Retry up to 3 times on connection errors
     for attempt in range(3):
@@ -242,7 +241,6 @@ def _call_gemini(prompt: str, system: str, max_tokens: int) -> str:
         "generationConfig": {
             "maxOutputTokens": max_tokens,
             "temperature": 0.3,
-            "responseMimeType": "application/json",
         },
     }
     if system:

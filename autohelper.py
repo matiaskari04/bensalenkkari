@@ -1304,28 +1304,64 @@ def _add_autodoc_aff(url: str) -> str:
 _LAST_PRICE_DEBUG = {"log": []}
 
 
-def _http_get(url: str, timeout: int = 5):
-    """Shared GET with a full browser-like header set. Returns (response_or_None, error_str_or_None)."""
+_shop_sessions = {}
+SHOP_SESSION_TTL = 1800  # 30 min — re-warm periodically
+
+_BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
+    "DNT": "1",
+}
+
+
+def _get_warmed_session(homepage_url: str, shop_key: str):
+    """
+    Some sites block cold, isolated requests but accept ones that look like
+    part of a real browsing session — i.e. a session with cookies already
+    set, arriving with a Referer from that same site. Visit the homepage
+    once, keep the cookies, and reuse that session for searches.
+    """
+    import time as _sst
+    cached = _shop_sessions.get(shop_key)
+    if cached and (_sst.time() - cached[0]) < SHOP_SESSION_TTL:
+        return cached[1]
+    sess = requests.Session()
+    sess.headers.update(_BROWSER_HEADERS)
     try:
-        r = requests.get(
-            url,
-            timeout=timeout,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-                "Cache-Control": "max-age=0",
-                "DNT": "1",
-            },
-        )
+        sess.get(homepage_url, timeout=6)
+    except Exception:
+        pass  # even if warming fails, return the session — search may still work cold
+    _shop_sessions[shop_key] = (_sst.time(), sess)
+    return sess
+
+
+def _http_get(url: str, timeout: int = 5):
+    """Cold GET with a full browser-like header set (no session/cookies)."""
+    try:
+        r = requests.get(url, timeout=timeout, headers=_BROWSER_HEADERS)
+        return r, None
+    except Exception as e:
+        return None, str(e)
+
+
+def _http_get_warmed(url: str, homepage_url: str, shop_key: str, referer: str = None, timeout: int = 6):
+    """GET using a warmed session (homepage visited first, cookies kept) with a Referer header."""
+    try:
+        sess = _get_warmed_session(homepage_url, shop_key)
+        headers = {}
+        if referer:
+            headers["Referer"] = referer
+        r = sess.get(url, timeout=timeout, headers=headers)
         return r, None
     except Exception as e:
         return None, str(e)
@@ -1334,6 +1370,23 @@ def _http_get(url: str, timeout: int = 5):
 def _normalize_for_match(s: str) -> str:
     """Strip everything but letters/digits and uppercase, for loose comparison."""
     return re.sub(r"[^A-Za-z0-9]", "", s or "").upper()
+
+
+def _oem_matches(haystack: str, oem_number: str) -> bool:
+    """
+    Check whether oem_number appears in haystack as a genuine, boundary-
+    respecting token — not just as a substring that could arise by
+    coincidence when unrelated numbers (e.g. a price and a size) sit next
+    to each other and get concatenated. Tolerates spaces/hyphens between
+    the original characters (common formatting: "182 0021", "182-0021").
+    """
+    if not haystack or not oem_number:
+        return False
+    chars = [c for c in oem_number if c.isalnum()]
+    if not chars:
+        return False
+    pattern = r"(?<![A-Za-z0-9])" + r"[\s\-]*".join(re.escape(c) for c in chars) + r"(?![A-Za-z0-9])"
+    return bool(re.search(pattern, haystack, re.IGNORECASE))
 
 
 def _find_product_links(html: str, base_url: str, domain_keyword: str,
@@ -1386,13 +1439,9 @@ def _find_product_links(html: str, base_url: str, domain_keyword: str,
     if not oem_number:
         return all_candidates[:max_results]
 
-    norm_oem = _normalize_for_match(oem_number)
-    if not norm_oem:
-        return all_candidates[:max_results]
-
     verified = []
     for c in all_candidates:
-        if norm_oem in _normalize_for_match(c["text"]) or norm_oem in _normalize_for_match(c["url"]):
+        if _oem_matches(c["text"], oem_number) or _oem_matches(c["url"], oem_number):
             verified.append(c)
         if len(verified) >= max_results:
             break
@@ -1514,7 +1563,7 @@ def _adapter_autodoc(oem_numbers: list, part_name: str, car: dict) -> dict:
     for num in oem_numbers[:4]:
         url = build(num)
         last_url = url
-        r, err = _http_get(url)
+        r, err = _http_get_warmed(url, "https://www.autodoc.fi/", "autodoc", referer="https://www.autodoc.fi/")
         debug["tried"].append(num)
         if err:
             debug["error"] = err
@@ -1550,7 +1599,7 @@ def _adapter_ak24(oem_numbers: list, part_name: str, car: dict) -> dict:
     for num in oem_numbers[:4]:
         url = build(num)
         last_url = url
-        r, err = _http_get(url)
+        r, err = _http_get_warmed(url, "https://www.ak24.fi/", "ak24", referer="https://www.ak24.fi/fi/varaosat")
         debug["tried"].append(num)
         if err:
             debug["error"] = err
@@ -1584,7 +1633,7 @@ def _adapter_trodo(oem_numbers: list, part_name: str, car: dict) -> dict:
     for num in oem_numbers[:4]:
         url = build(num)
         last_url = url
-        r, err = _http_get(url)
+        r, err = _http_get_warmed(url, "https://www.trodo.com/", "trodo", referer="https://www.trodo.com/")
         debug["tried"].append(num)
         if err:
             debug["error"] = err

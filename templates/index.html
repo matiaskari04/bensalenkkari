@@ -2072,6 +2072,50 @@ function ensureArray(v) {
   return [];
 }
 
+// ── Global renderMod (used by both renderTuning and renderSingleLevel) ──
+function renderMod(mod) {
+  var EFFECTS = {
+    power_hp:{label:LANG==='fi'?'Teho':'Power',unit:'hp',type:'real'},
+    torque_nm:{label:LANG==='fi'?'Vääntö':'Torque',unit:'Nm',type:'real'},
+    handling:{label:LANG==='fi'?'Ajettavuus':'Handling',unit:'',type:'score'},
+    fuel_l100km:{label:LANG==='fi'?'Kulutus':'Fuel',unit:'l/100km',type:'fuel'},
+    reliability:{label:LANG==='fi'?'Luotettavuus':'Reliability',unit:'',type:'score'},
+    daily_usability:{label:LANG==='fi'?'Arkikäyttö':'Daily',unit:'',type:'score'},
+    power:{label:LANG==='fi'?'Teho':'Power',unit:'hp',type:'real'},
+    torque:{label:LANG==='fi'?'Vääntö':'Torque',unit:'Nm',type:'real'},
+    fuel_economy:{label:LANG==='fi'?'Kulutus':'Fuel',unit:'l/100km',type:'fuel'},
+  };
+  var CAT_CLASS = {engine:'cat-engine',suspension:'cat-suspension',exhaust:'cat-exhaust',brakes:'cat-brakes'};
+  var CAT_LABEL = {engine:LANG==='fi'?'Moottori':'Engine',suspension:LANG==='fi'?'Alusta':'Suspension',exhaust:LANG==='fi'?'Pakoputki':'Exhaust',brakes:LANG==='fi'?'Jarrut':'Brakes',other:LANG==='fi'?'Muu':'Other'};
+  var cat = mod.category||'other', worth = mod.worth_score||0, stars = '';
+  for (var s=1;s<=5;s++) stars += '<span class="worth-star'+(s<=worth?'':' empty')+'">★</span>';
+  var fx = '<div class="mod-effects">';
+  Object.keys(EFFECTS).forEach(function(key){
+    var eff = EFFECTS[key];
+    var val = (mod.effects||{})[key];
+    if (val===undefined||val===null) return;
+    var num = parseFloat(val)||0, isPos, displayVal, barPct;
+    if (eff.type==='real'){isPos=num>0;displayVal=(num>0?'+':'')+num+' '+eff.unit;barPct=Math.min(Math.abs(num)/50*100,100);}
+    else if(eff.type==='fuel'){isPos=num<0;displayVal=(num>0?'+':'')+num+' '+eff.unit;barPct=Math.min(Math.abs(num)/2*100,100);}
+    else{isPos=num>=0;displayVal=(num>0?'+':'')+num;barPct=Math.abs(num)/5*100;}
+    fx+='<div class="effect-row"><span class="effect-lbl">'+eff.label+'</span><div class="effect-bar-wrap"><div class="effect-bar '+(isPos?'pos':'neg')+'" style="width:'+barPct+'%"></div></div><span class="effect-val" style="color:'+(isPos?'var(--green)':'var(--red)')+'">'+displayVal+'</span></div>';
+  });
+  fx += '</div>';
+  return '<div class="mod-card">'
+    +'<div class="mod-header"><span class="mod-cat '+(CAT_CLASS[cat]||'cat-other')+'">'+(CAT_LABEL[cat]||cat)+'</span><div class="mod-name">'+mod.name+'</div><div class="mod-worth">'+stars+'</div></div>'
+    +'<div class="mod-desc">'+(mod.description||'')+'</div>'
+    +(mod.hp_gain||mod.torque_gain?'<div class="mod-gains">'+(mod.hp_gain?'<div class="gain-box"><div class="gain-val">+'+mod.hp_gain+' hp</div><div class="gain-lbl">'+(LANG==="fi"?"lisäteho":"power gain")+'</div></div>':'')+(mod.torque_gain?'<div class="gain-box"><div class="gain-val">+'+mod.torque_gain+' Nm</div><div class="gain-lbl">'+(LANG==="fi"?"lisävääntö":"torque gain")+'</div></div>':'')+'</div>':'')
+    +fx
+    +'<div class="mod-footer"><div><div class="mod-price">~€'+(mod.price_eur||'?')+'</div>'+(mod.price_range?'<div class="mod-price-range">('+mod.price_range+' €)</div>':'')+'</div>'
+    +'<span class="mod-badge">'+(mod.reversible?(LANG==='fi'?'Palautettavissa':'Reversible'):(LANG==='fi'?'Pysyvä':'Permanent'))+'</span>'
+    +'<span class="mod-badge">'+(mod.difficulty||'')+'</span></div>'
+    +(mod.notes?'<div class="mod-notes">'+mod.notes+'</div>':'')
+    +(mod.requires&&mod.requires.length?(Array.isArray(mod.requires)?'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires.join(', ')+'</div>':'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires+'</div>'):'')
+    +'<button class="mod-search-btn" onclick="searchModPart(this.dataset.mod)" data-mod="'+(mod.name||'').replace(/"/g,"&quot;")+'">'
+    +(LANG==="fi"?"Hae osa":"Search Part")
+    +'</button></div>';
+}
+
 function renderTuning(data) {
   var body = document.getElementById('tuning-body');
   if (!data || data.error) {
@@ -2104,54 +2148,6 @@ function renderTuning(data) {
       +'</div>';
   }
   if (data.summary) html += '<div class="tuning-summary">'+data.summary+'</div>';
-  function renderMod(mod) {
-    var cat = mod.category||'other', worth = mod.worth_score||0, stars = '';
-    for (var s=1;s<=5;s++) stars += '<span class="worth-star'+(s<=worth?'':' empty')+'">★</span>';
-    var fx = '<div class="mod-effects">';
-    Object.keys(EFFECTS).forEach(function(key){
-      var eff = EFFECTS[key];
-      var val = (mod.effects||{})[key];
-      if (val===undefined||val===null) return;
-      var num = parseFloat(val) || 0;
-      var isPos, displayVal, barPct;
-      if (eff.type === 'real') {
-        // Real units: +20 hp, +40 Nm
-        isPos = num > 0;
-        displayVal = (num > 0 ? '+' : '') + num + ' ' + eff.unit;
-        barPct = Math.min(Math.abs(num) / 50 * 100, 100);
-      } else if (eff.type === 'fuel') {
-        // Fuel: lower is better, +0.5 means worse
-        isPos = num < 0;
-        displayVal = (num > 0 ? '+' : '') + num + ' ' + eff.unit;
-        barPct = Math.min(Math.abs(num) / 2 * 100, 100);
-      } else {
-        // Score: -3 to +5
-        isPos = num >= 0;
-        displayVal = (num > 0 ? '+' : '') + num;
-        barPct = Math.abs(num) / 5 * 100;
-      }
-      fx += '<div class="effect-row">'
-        +'<span class="effect-lbl">'+eff.label+'</span>'
-        +'<div class="effect-bar-wrap"><div class="effect-bar '+(isPos?'pos':'neg')+'" style="width:'+barPct+'%"></div></div>'
-        +'<span class="effect-val" style="color:'+(isPos?'var(--green)':'var(--red)')+'">'+displayVal+'</span>'
-        +'</div>';
-    });
-    fx += '</div>';
-    return '<div class="mod-card">'
-      +'<div class="mod-header"><span class="mod-cat '+(CAT_CLASS[cat]||'cat-other')+'">'+(CAT_LABEL[cat]||cat)+'</span><div class="mod-name">'+mod.name+'</div><div class="mod-worth">'+stars+'</div></div>'
-      +'<div class="mod-desc">'+(mod.description||'')+'</div>'
-      +(mod.hp_gain||mod.torque_gain?'<div class="mod-gains">'+(mod.hp_gain?'<div class="gain-box"><div class="gain-val">+'+(mod.hp_gain)+' hp</div><div class="gain-lbl">'+(LANG==="fi"?"lisäteho":"power gain")+'</div></div>':'')+(mod.torque_gain?'<div class="gain-box"><div class="gain-val">+'+(mod.torque_gain)+' Nm</div><div class="gain-lbl">'+(LANG==="fi"?"lisävääntö":"torque gain")+'</div></div>':'')+'</div>':'')
-      +fx
-      +'<div class="mod-footer"><div><div class="mod-price">~€'+(mod.price_eur||'?')+'</div>'+(mod.price_range?'<div class="mod-price-range">('+mod.price_range+' €)</div>':'')+'</div>'
-      +'<span class="mod-badge">'+(mod.reversible?(LANG==='fi'?'Palautettavissa':'Reversible'):(LANG==='fi'?'Pysyvä':'Permanent'))+'</span>'
-      +'<span class="mod-badge">'+(mod.difficulty||'')+'</span></div>'
-      +(mod.notes?'<div class="mod-notes">'+mod.notes+'</div>':'')
-      +(mod.requires&&mod.requires.length?(Array.isArray(mod.requires)?'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires.join(', ')+'</div>':'<div class="mod-notes">⚠ '+(LANG==='fi'?'Vaatii: ':'Requires: ')+mod.requires+'</div>'):'')
-      +'<button class="mod-search-btn" onclick="searchModPart(this.dataset.mod)" data-mod="'+(mod.name||'').replace(/"/g,'&quot;')+'">' 
-      +(LANG==="fi"?"Hae osa":"Search Part")
-      +'</button>'
-      +'</div>';
-  }
   var levels = ensureArray(data.levels);
   // Ensure we always have 3 levels even if AI returned fewer
   var LV_DEFAULTS = [

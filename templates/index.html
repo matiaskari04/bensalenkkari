@@ -177,6 +177,8 @@ input,select{font-family:inherit}
 .guide-step{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
 .guide-step:last-child{border-bottom:none}
 .step-num{width:28px;height:28px;background:var(--amber-glow);border:1px solid var(--amber-dim);border-radius:50%;color:var(--amber);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-num{font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+.torque-spec{background:var(--amber-glow);color:var(--amber);font-weight:700;padding:1px 7px;border-radius:6px;white-space:nowrap;border:1px solid rgba(245,158,11,.25)}
 .step-text{font-size:15px;line-height:1.7}
 .step-icon{width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:5px}
 
@@ -367,7 +369,10 @@ input,select{font-family:inherit}
 .diagram-thumb-title{font-size:11px;color:var(--text3);padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:1000;display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px}
 .lightbox.open{display:flex}
-.lightbox-img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:var(--rs)}
+.lightbox-img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:var(--rs);cursor:zoom-in;touch-action:none;user-select:none;-webkit-user-drag:none;transition:transform .15s ease}
+.lightbox-img.dragging{transition:none}
+.lightbox-zoom-hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--text3);background:rgba(0,0,0,.5);padding:5px 12px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .3s}
+.lightbox.open .lightbox-zoom-hint{opacity:1}
 .lightbox-title{color:var(--text2);font-size:12px;margin-top:10px;text-align:center;max-width:90%}
 .lightbox-close{position:absolute;top:16px;right:16px;color:#fff;font-size:32px;cursor:pointer;line-height:1}
 .lightbox-nav{display:flex;gap:20px;margin-top:14px}
@@ -716,7 +721,8 @@ input,select{font-family:inherit}
 
 <div class="lightbox" id="lightbox" onclick="closeLightboxEl()">
   <span class="lightbox-close" onclick="closeLightboxEl()">×</span>
-  <img class="lightbox-img" id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+  <img class="lightbox-img" id="lightbox-img" src="" alt="" onclick="lbImgClick(event)">
+  <div class="lightbox-zoom-hint" id="lbZoomHint"></div>
   <div class="lightbox-title" id="lightbox-title"></div>
   <div class="lightbox-nav">
     <button onclick="lightboxNav(-1)">‹</button>
@@ -1574,6 +1580,14 @@ function animateResultsIn() {
 }
 
 // ── Render functions ───────────────────────────────────────────
+function highlightTorque(text) {
+  if (!text) return text;
+  // Escape any incidental HTML first (defensive — AI text is plain but just in case)
+  var escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Match torque specs: "35 Nm", "35-40 Nm", "35,5 Nm", "35.5Nm", case-insensitive
+  return escaped.replace(/(\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?\s*N\s?m)\b/gi, '<span class="torque-spec">$1</span>');
+}
+
 function renderPartHeader(info, rawPart) {
   document.getElementById('res-name').textContent = info.canonical_name || rawPart;
   document.getElementById('res-desc').textContent = info.description || '';
@@ -1620,14 +1634,28 @@ function renderPartHeader(info, rawPart) {
     toolsBox.style.display = '';
   } else { toolsBox.style.display = 'none'; }
 
-  // Guide
-  // Guide with step icons
-  var steps = (info.replacement_summary || '').split('\n').filter(function(l){ return l.trim(); });
-  document.getElementById('guide-steps').innerHTML = steps.length ? steps.map(function(line) {
-    var m = line.match(/^(\d+)\.\s*(.*)/);
-    if (m) return '<div class="guide-step"><div class="step-icon">' + getStepIcon(m[2]) + '</div><div style="flex:1"><div class="step-text">' + m[2] + '</div></div></div>';
-    return '<div class="guide-step" style="padding-left:52px"><div class="step-text" style="color:var(--text2)">' + line.trim() + '</div></div>';
-  }).join('') : '<div class="empty">Ei ohjetta saatavilla</div>';
+  // Guide with step icons — robust to however the AI formatted the steps
+  var rawGuide = (info.replacement_summary || '').trim();
+  var stepLines = [];
+  if (rawGuide) {
+    // First try splitting on real newlines
+    var lineCandidates = rawGuide.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+    var numberedLines = lineCandidates.filter(function(l){ return /^\d+[.)]\s*/.test(l); });
+    if (numberedLines.length >= 2) {
+      // Newlines worked and most lines are numbered steps — use as-is
+      stepLines = lineCandidates;
+    } else {
+      // No usable newlines (AI wrote one continuous paragraph) — split right
+      // before each "N. " or "N) " occurrence instead, wherever it appears.
+      var split = rawGuide.split(/(?=\d+[.)]\s)/).map(function(l){ return l.trim(); }).filter(Boolean);
+      stepLines = split.length >= 2 ? split : [rawGuide];
+    }
+  }
+  document.getElementById('guide-steps').innerHTML = stepLines.length ? stepLines.map(function(line) {
+    var m = line.match(/^(\d+)[.)]\s*(.*)/);
+    if (m) return '<div class="guide-step"><div class="step-icon">' + getStepIcon(m[2]) + '</div><div style="flex:1"><div class="step-num">' + (LANG==='fi'?'Vaihe ':'Step ') + m[1] + '</div><div class="step-text">' + highlightTorque(m[2]) + '</div></div></div>';
+    return '<div class="guide-step" style="padding-left:52px"><div class="step-text" style="color:var(--text2)">' + highlightTorque(line.trim()) + '</div></div>';
+  }).join('') : '<div class="empty">' + (LANG==='fi'?'Ei ohjetta saatavilla':'No guide available') + '</div>';
 
   // Reset to guide tab
   document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab==='guide'); });
@@ -1769,20 +1797,31 @@ function renderVideos(videos) {
 var lightboxImages = [];
 var lightboxIndex = 0;
 
+// ── Lightbox zoom & pan state ──────────────────────────────────
+var lbZoom = 1, lbPanX = 0, lbPanY = 0;
+var lbDragging = false, lbDidDrag = false;
+var lbDragStartX = 0, lbDragStartY = 0, lbPanStartX = 0, lbPanStartY = 0;
+var lbPinchStartDist = 0, lbPinchStartZoom = 1;
+var lbZoomHintTimer = null;
+
 function openLightbox(index) {
   lightboxIndex = index;
+  lbResetZoom();
   updateLightbox();
   document.getElementById('lightbox').classList.add('open');
   document.body.style.overflow = 'hidden';
+  showLbZoomHint();
 }
 
 function closeLightboxEl() {
   document.getElementById('lightbox').classList.remove('open');
   document.body.style.overflow = '';
+  lbResetZoom();
 }
 
 function lightboxNav(dir) {
   lightboxIndex = (lightboxIndex + dir + lightboxImages.length) % lightboxImages.length;
+  lbResetZoom();
   updateLightbox();
 }
 
@@ -1792,6 +1831,122 @@ function updateLightbox() {
   document.getElementById('lightbox-img').src = item.url;
   document.getElementById('lightbox-title').textContent = item.title || '';
 }
+
+function showLbZoomHint() {
+  var hint = document.getElementById('lbZoomHint');
+  if (!hint) return;
+  hint.textContent = LANG === 'fi' ? 'Nipistä tai vieritä zoomataksesi' : 'Pinch or scroll to zoom';
+  clearTimeout(lbZoomHintTimer);
+  lbZoomHintTimer = setTimeout(function(){ hint.textContent = ''; }, 2500);
+}
+
+function lbApplyTransform() {
+  var img = document.getElementById('lightbox-img');
+  if (!img) return;
+  img.style.transform = 'translate(' + lbPanX + 'px,' + lbPanY + 'px) scale(' + lbZoom + ')';
+  img.style.cursor = lbZoom > 1.02 ? 'grab' : 'zoom-in';
+}
+
+function lbResetZoom() {
+  lbZoom = 1; lbPanX = 0; lbPanY = 0;
+  lbApplyTransform();
+}
+
+function lbImgClick(e) {
+  e.stopPropagation();
+  if (lbDidDrag) { lbDidDrag = false; return; } // was a drag/pinch, not a tap
+  if (lbZoom > 1.02) {
+    lbResetZoom();
+  } else {
+    lbZoom = 2.4;
+    lbApplyTransform();
+  }
+}
+
+function lbTouchDistance(touches) {
+  var dx = touches[0].clientX - touches[1].clientX;
+  var dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+(function initLightboxZoom() {
+  var img = document.getElementById('lightbox-img');
+  if (!img) return;
+
+  img.addEventListener('touchstart', function(e) {
+    lbDidDrag = false;
+    if (e.touches.length === 2) {
+      lbPinchStartDist = lbTouchDistance(e.touches);
+      lbPinchStartZoom = lbZoom;
+      img.classList.add('dragging');
+    } else if (e.touches.length === 1 && lbZoom > 1.02) {
+      lbDragging = true;
+      img.classList.add('dragging');
+      lbDragStartX = e.touches[0].clientX;
+      lbDragStartY = e.touches[0].clientY;
+      lbPanStartX = lbPanX;
+      lbPanStartY = lbPanY;
+    }
+  }, {passive: true});
+
+  img.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 2) {
+      lbDidDrag = true;
+      var dist = lbTouchDistance(e.touches);
+      var scale = dist / (lbPinchStartDist || 1);
+      lbZoom = Math.min(Math.max(lbPinchStartZoom * scale, 1), 4);
+      lbApplyTransform();
+      e.preventDefault();
+    } else if (e.touches.length === 1 && lbDragging) {
+      lbDidDrag = true;
+      lbPanX = lbPanStartX + (e.touches[0].clientX - lbDragStartX);
+      lbPanY = lbPanStartY + (e.touches[0].clientY - lbDragStartY);
+      lbApplyTransform();
+      e.preventDefault();
+    }
+  }, {passive: false});
+
+  img.addEventListener('touchend', function() {
+    lbDragging = false;
+    img.classList.remove('dragging');
+    if (lbZoom < 1.05) { lbZoom = 1; lbPanX = 0; lbPanY = 0; lbApplyTransform(); }
+    setTimeout(function(){ lbDidDrag = false; }, 50);
+  });
+
+  // Desktop: mouse wheel zoom
+  img.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    var delta = e.deltaY < 0 ? 0.25 : -0.25;
+    lbZoom = Math.min(Math.max(lbZoom + delta, 1), 4);
+    if (lbZoom <= 1) { lbZoom = 1; lbPanX = 0; lbPanY = 0; }
+    lbApplyTransform();
+  }, {passive: false});
+
+  // Desktop: click-drag to pan when zoomed
+  img.addEventListener('mousedown', function(e) {
+    if (lbZoom <= 1.02) return;
+    lbDragging = true;
+    lbDidDrag = false;
+    img.classList.add('dragging');
+    lbDragStartX = e.clientX;
+    lbDragStartY = e.clientY;
+    lbPanStartX = lbPanX;
+    lbPanStartY = lbPanY;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!lbDragging) return;
+    var moved = Math.abs(e.clientX - lbDragStartX) + Math.abs(e.clientY - lbDragStartY);
+    if (moved > 3) lbDidDrag = true;
+    lbPanX = lbPanStartX + (e.clientX - lbDragStartX);
+    lbPanY = lbPanStartY + (e.clientY - lbDragStartY);
+    lbApplyTransform();
+  });
+  document.addEventListener('mouseup', function() {
+    lbDragging = false;
+    img.classList.remove('dragging');
+  });
+})();
 
 document.addEventListener('keydown', function(e) {
   var lb = document.getElementById('lightbox');

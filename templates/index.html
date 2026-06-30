@@ -1930,12 +1930,19 @@ var MOD_SEARCH_TERMS = {
 function searchModPart(modName) {
   // Called from onclick with data attribute
   if (modName && modName.dataset) modName = modName.dataset.mod;
+
+  // Make sure currentCar is set from tuningCar if needed
+  if (!currentCar && tuningCar) {
+    currentCar = tuningCar;
+    showCarResult(tuningCar);
+  }
+
   // Close tuning modal
   closeTuning();
 
   // Find best search term
   var searchTerm = modName;
-  var nameLow = modName.toLowerCase();
+  var nameLow = (modName || '').toLowerCase();
 
   // Try exact match first
   if (MOD_SEARCH_TERMS[nameLow]) {
@@ -1953,10 +1960,8 @@ function searchModPart(modName) {
   }
 
   // Append make/model for specificity
-  var carStr = '';
-  if (currentCar) {
-    carStr = ((currentCar.make || '') + ' ' + (currentCar.model || '')).trim();
-  }
+  var car = currentCar || tuningCar || {};
+  var carStr = ((car.make || '') + ' ' + (car.model || '')).trim();
   var fullSearch = carStr ? searchTerm + ' ' + carStr : searchTerm;
 
   // Set the part input and trigger search

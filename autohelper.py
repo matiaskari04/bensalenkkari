@@ -1301,394 +1301,43 @@ def _add_autodoc_aff(url: str) -> str:
 # visible and fixable in one pass instead of "it didn't work" guesswork.
 # ════════════════════════════════════════════════════════════════════════
 
-_LAST_PRICE_DEBUG = {"log": []}
+# ════════════════════════════════════════════════════════════════════════
+# PART PRICE SEARCH
+#
+# Known shops (Motonet, AK24, Autodoc, Trodo) get a direct, honest link to
+# that shop's own search results page using the best OEM/aftermarket
+# number found. No server-side scraping — the user's own browser makes the
+# request when they click, so there's no bot-detection 403 to fight in the
+# first place, and never a risk of confidently linking to the wrong part.
+# eBay/Amazon are still discovered via Serper, which has proven reliable
+# for those specifically.
+# ════════════════════════════════════════════════════════════════════════
 
-
-_shop_sessions = {}
-SHOP_SESSION_TTL = 1800  # 30 min — re-warm periodically
-
-_BROWSER_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Language": "fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Cache-Control": "max-age=0",
-    "DNT": "1",
-}
-
-
-def _get_warmed_session(homepage_url: str, shop_key: str):
-    """
-    Some sites block cold, isolated requests but accept ones that look like
-    part of a real browsing session — i.e. a session with cookies already
-    set, arriving with a Referer from that same site. Visit the homepage
-    once, keep the cookies, and reuse that session for searches.
-    """
-    import time as _sst
-    cached = _shop_sessions.get(shop_key)
-    if cached and (_sst.time() - cached[0]) < SHOP_SESSION_TTL:
-        return cached[1]
-    sess = requests.Session()
-    sess.headers.update(_BROWSER_HEADERS)
-    try:
-        sess.get(homepage_url, timeout=6)
-    except Exception:
-        pass  # even if warming fails, return the session — search may still work cold
-    _shop_sessions[shop_key] = (_sst.time(), sess)
-    return sess
-
-
-def _http_get(url: str, timeout: int = 5):
-    """Cold GET with a full browser-like header set (no session/cookies)."""
-    try:
-        r = requests.get(url, timeout=timeout, headers=_BROWSER_HEADERS)
-        return r, None
-    except Exception as e:
-        return None, str(e)
-
-
-def _http_get_warmed(url: str, homepage_url: str, shop_key: str, referer: str = None, timeout: int = 6):
-    """GET using a warmed session (homepage visited first, cookies kept) with a Referer header."""
-    try:
-        sess = _get_warmed_session(homepage_url, shop_key)
-        headers = {}
-        if referer:
-            headers["Referer"] = referer
-        r = sess.get(url, timeout=timeout, headers=headers)
-        return r, None
-    except Exception as e:
-        return None, str(e)
-
-
-def _normalize_for_match(s: str) -> str:
-    """Strip everything but letters/digits and uppercase, for loose comparison."""
-    return re.sub(r"[^A-Za-z0-9]", "", s or "").upper()
-
-
-def _oem_matches(haystack: str, oem_number: str) -> bool:
-    """
-    Check whether oem_number appears in haystack as a genuine, boundary-
-    respecting token — not just as a substring that could arise by
-    coincidence when unrelated numbers (e.g. a price and a size) sit next
-    to each other and get concatenated. Tolerates spaces/hyphens between
-    the original characters (common formatting: "182 0021", "182-0021").
-    """
-    if not haystack or not oem_number:
-        return False
-    chars = [c for c in oem_number if c.isalnum()]
-    if not chars:
-        return False
-    pattern = r"(?<![A-Za-z0-9])" + r"[\s\-]*".join(re.escape(c) for c in chars) + r"(?![A-Za-z0-9])"
-    return bool(re.search(pattern, haystack, re.IGNORECASE))
-
-
-def _find_product_links(html: str, base_url: str, domain_keyword: str,
-                         oem_number: str = None,
-                         require_path_contains: str = None,
-                         extra_exclude: list = None, max_results: int = 3) -> list:
-    """
-    Parse a shop's search-results HTML and return up to max_results candidate
-    product links (with their link text, for name/price extraction).
-
-    If oem_number is given, candidates are verified: only links whose URL or
-    visible text actually contains the OEM/article number are trusted. This
-    matters because search-results pages often show "related" or filler
-    products even for a search with no real hit — without this check we'd
-    confidently return something irrelevant (e.g. a cabin fan for a ball
-    joint search) instead of admitting we didn't find a real match.
-    """
-    soup = BeautifulSoup(html, "html.parser")
-    exclude = ["/login", "/kirjaudu", "/cart", "/ostoskori", "/checkout", "/kassa",
-               "/help", "/ohje", "/blog", "/contact", "/yhteystiedot", "/about",
-               "/terms", "/ehdot", "/privacy", "/tietosuoja", "/account", "/tili",
-               "javascript:", "#", "/search", "/haku", "/info/"]
-    if extra_exclude:
-        exclude += extra_exclude
-
-    seen = set()
-    all_candidates = []
-    for a in soup.find_all("a", href=True):
-        href = a["href"]
-        if not href or href in seen:
-            continue
-        seen.add(href)
-        full_url = urllib.parse.urljoin(base_url, href)
-        if domain_keyword not in full_url.lower():
-            continue
-        if any(p in href.lower() for p in exclude):
-            continue
-        path = urllib.parse.urlparse(full_url).path
-        if require_path_contains:
-            if require_path_contains not in path.lower():
-                continue
-        else:
-            if len(path.strip("/").split("/")) < 2:
-                continue
-        text = a.get_text(strip=True)
-        all_candidates.append({"url": full_url, "text": text})
-        if len(all_candidates) >= 25:  # collect a reasonable pool before filtering
-            break
-
-    if not oem_number:
-        return all_candidates[:max_results]
-
-    verified = []
-    for c in all_candidates:
-        if _oem_matches(c["text"], oem_number) or _oem_matches(c["url"], oem_number):
-            verified.append(c)
-        if len(verified) >= max_results:
-            break
-    return verified
-
-
-def _page_says_no_results(html: str) -> bool:
-    """Detect common 'no results' phrasing so we don't scrape filler/
-    recommendation widgets off an otherwise-empty search page."""
-    low = html.lower()
-    markers = [
-        "ei tuloksia", "ei hakutuloksia", "0 tulosta", "0 tulokset",
-        "no results", "no products found", "hakusi ei tuottanut tulosta",
-        "emme löytäneet", "no matching products",
+def _direct_shop_links(oem_numbers: list, query: str) -> list:
+    """Build direct, honest search-page links for known shops. Always real,
+    always goes straight to that shop's own site — never a Google redirect."""
+    q = urllib.parse.quote_plus(query)
+    oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else q
+    return [
+        {"shop": "Autodoc", "price": None, "currency": "EUR",
+         "url": _add_autodoc_aff(f"https://www.autodoc.fi/search?query={oem_q}"),
+         "shipping": "3-7 days", "note": "Katso sivustolta"},
+        {"shop": "Motonet", "price": None, "currency": "EUR",
+         "url": f"https://www.motonet.fi/fi/search?q={oem_q}",
+         "shipping": "1-3 days (FI)", "note": "Katso sivustolta"},
+        {"shop": "AK24", "price": None, "currency": "EUR",
+         "url": f"https://www.ak24.fi/fi/search?term={oem_q}",
+         "shipping": "3-5 days", "note": "Katso sivustolta"},
+        {"shop": "Trodo", "price": None, "currency": "EUR",
+         "url": f"https://www.trodo.com/en/search?q={oem_q}",
+         "shipping": "3-7 days", "note": "Katso sivustolta"},
     ]
-    return any(m in low for m in markers)
-
-
-def _extract_price_near(text: str):
-    """Best-effort price extraction from link text, e.g. '53,90 €' or '€53.90'."""
-    if not text:
-        return None
-    m = re.search(r"(\d{1,5}[.,]\d{2})\s*€", text) or re.search(r"€\s*(\d{1,5}[.,]\d{2})", text)
-    if m:
-        try:
-            return float(m.group(1).replace(",", "."))
-        except Exception:
-            return None
-    return None
-
-
-def _build_shop_result(shop_name: str, candidates: list, search_url: str,
-                        shipping: str, url_transform=None) -> list:
-    """Turn scraped candidates into result dicts; always returns at least
-    one entry (the search page itself) so a link is NEVER missing."""
-    results = []
-    for c in candidates[:2]:
-        price = _extract_price_near(c["text"])
-        url = url_transform(c["url"]) if url_transform else c["url"]
-        results.append({
-            "shop": shop_name, "part": c["text"][:60], "price": price,
-            "currency": "EUR", "url": url, "shipping": shipping,
-            "note": "" if price else "Katso sivustolta",
-        })
-    if not results:
-        url = url_transform(search_url) if url_transform else search_url
-        results.append({
-            "shop": shop_name, "part": "", "price": None, "currency": "EUR",
-            "url": url, "shipping": shipping, "note": "Katso sivustolta",
-        })
-    return results
-
-
-# ── Per-shop adapters ──────────────────────────────────────────────────
-# Each adapter talks to exactly one shop and returns:
-#   {"shop": str, "results": [...], "debug": {url, status, candidates, error}}
-
-def _try_oem_numbers(oem_numbers: list, build_url, max_tries: int = 5):
-    """
-    Try each OEM/aftermarket number in turn against a shop's search until
-    one of them returns real product candidates. A single wrong/hallucinated
-    number shouldn't sink the whole search when 5 others might be genuine.
-    Returns (candidates, search_url_used, attempts_log).
-    """
-    attempts = []
-    last_url = None
-    for num in oem_numbers[:max_tries]:
-        url = build_url(num)
-        last_url = url
-        r, err = _http_get(url)
-        if err:
-            attempts.append({"number": num, "error": err})
-            continue
-        if not r.ok:
-            attempts.append({"number": num, "error": f"HTTP {r.status_code}"})
-            continue
-        yield num, url, r, attempts
-        return
-    yield None, last_url, None, attempts
-
-
-def _adapter_motonet(oem_numbers: list, part_name: str, car: dict) -> dict:
-    shop = "Motonet"
-    debug = {"shop": shop, "url": None, "status": None, "candidates": 0, "error": None, "tried": []}
-    build = lambda num: f"https://www.motonet.fi/fi/search?q={urllib.parse.quote_plus(num)}"
-    candidates, last_url = [], None
-    for num in oem_numbers[:4]:
-        url = build(num)
-        last_url = url
-        r, err = _http_get(url)
-        debug["tried"].append(num)
-        if err:
-            debug["error"] = err
-            continue
-        debug["status"] = r.status_code
-        if not r.ok:
-            debug["error"] = f"HTTP {r.status_code}"
-            continue
-        if _page_says_no_results(r.text):
-            debug["url"] = url
-            debug["error"] = "no results on page"
-            continue
-        found = _find_product_links(r.text, url, "motonet.fi", oem_number=num, require_path_contains="/tuote/")
-        if found:
-            candidates = found
-            debug["url"] = url
-            debug["error"] = None
-            break
-        debug["url"] = url
-    debug["candidates"] = len(candidates)
-    return {"shop": shop, "results": _build_shop_result(shop, candidates, last_url or build(oem_numbers[0]), "1-3 days (FI)"), "debug": debug}
-
-
-def _adapter_autodoc(oem_numbers: list, part_name: str, car: dict) -> dict:
-    shop = "Autodoc"
-    debug = {"shop": shop, "url": None, "status": None, "candidates": 0, "error": None, "tried": []}
-    build = lambda num: f"https://www.autodoc.fi/search?query={urllib.parse.quote_plus(num)}"
-    candidates, last_url = [], None
-    for num in oem_numbers[:4]:
-        url = build(num)
-        last_url = url
-        r, err = _http_get_warmed(url, "https://www.autodoc.fi/", "autodoc", referer="https://www.autodoc.fi/")
-        debug["tried"].append(num)
-        if err:
-            debug["error"] = err
-            continue
-        debug["status"] = r.status_code
-        if not r.ok:
-            debug["error"] = f"HTTP {r.status_code}"
-            continue
-        # Confirmed pattern: product pages live at /autonosat/{category}-{id}/{make}/{model}/...
-        if _page_says_no_results(r.text):
-            debug["url"] = url
-            debug["error"] = "no results on page"
-            continue
-        found = _find_product_links(r.text, url, "autodoc.fi", oem_number=num,
-                                     require_path_contains="/autonosat/",
-                                     extra_exclude=["/varaosat/"])
-        if found:
-            candidates = found
-            debug["url"] = url
-            debug["error"] = None
-            break
-        debug["url"] = url
-    debug["candidates"] = len(candidates)
-    fallback_url = last_url or build(oem_numbers[0])
-    return {"shop": shop, "results": _build_shop_result(shop, candidates, fallback_url, "3-7 days", _add_autodoc_aff), "debug": debug}
-
-
-def _adapter_ak24(oem_numbers: list, part_name: str, car: dict) -> dict:
-    shop = "AK24"
-    debug = {"shop": shop, "url": None, "status": None, "candidates": 0, "error": None, "tried": []}
-    build = lambda num: f"https://www.ak24.fi/fi/search?term={urllib.parse.quote_plus(num)}"
-    candidates, last_url = [], None
-    for num in oem_numbers[:4]:
-        url = build(num)
-        last_url = url
-        r, err = _http_get_warmed(url, "https://www.ak24.fi/", "ak24", referer="https://www.ak24.fi/fi/varaosat")
-        debug["tried"].append(num)
-        if err:
-            debug["error"] = err
-            continue
-        debug["status"] = r.status_code
-        if not r.ok:
-            debug["error"] = f"HTTP {r.status_code}"
-            continue
-        # No confirmed product-URL pattern yet — generic depth heuristic.
-        if _page_says_no_results(r.text):
-            debug["url"] = url
-            debug["error"] = "no results on page"
-            continue
-        found = _find_product_links(r.text, url, "ak24.fi", oem_number=num)
-        if found:
-            candidates = found
-            debug["url"] = url
-            debug["error"] = None
-            break
-        debug["url"] = url
-    debug["candidates"] = len(candidates)
-    fallback_url = last_url or build(oem_numbers[0])
-    return {"shop": shop, "results": _build_shop_result(shop, candidates, fallback_url, "3-5 days"), "debug": debug}
-
-
-def _adapter_trodo(oem_numbers: list, part_name: str, car: dict) -> dict:
-    shop = "Trodo"
-    debug = {"shop": shop, "url": None, "status": None, "candidates": 0, "error": None, "tried": []}
-    build = lambda num: f"https://www.trodo.com/en/search?q={urllib.parse.quote_plus(num)}"
-    candidates, last_url = [], None
-    for num in oem_numbers[:4]:
-        url = build(num)
-        last_url = url
-        r, err = _http_get_warmed(url, "https://www.trodo.com/", "trodo", referer="https://www.trodo.com/")
-        debug["tried"].append(num)
-        if err:
-            debug["error"] = err
-            continue
-        debug["status"] = r.status_code
-        if not r.ok:
-            debug["error"] = f"HTTP {r.status_code}"
-            continue
-        if _page_says_no_results(r.text):
-            debug["url"] = url
-            debug["error"] = "no results on page"
-            continue
-        found = _find_product_links(r.text, url, "trodo.com", oem_number=num)
-        if found:
-            candidates = found
-            debug["url"] = url
-            debug["error"] = None
-            break
-        debug["url"] = url
-    debug["candidates"] = len(candidates)
-    fallback_url = last_url or build(oem_numbers[0])
-    return {"shop": shop, "results": _build_shop_result(shop, candidates, fallback_url, "3-7 days"), "debug": debug}
-
-
-SHOP_ADAPTERS = [_adapter_motonet, _adapter_ak24, _adapter_autodoc, _adapter_trodo]
-
-
-def _run_shop_adapters(oem_numbers: list, part_name: str, car: dict):
-    """
-    Run all known-shop adapters in parallel. Each adapter tries multiple
-    OEM/aftermarket numbers in sequence (not just the first one), since
-    a number that doesn't exist in one shop's catalog might exist in
-    another's, or under a different brand entirely.
-    """
-    if not oem_numbers:
-        return [], []
-    results = []
-    debug_log = []
-    import concurrent.futures
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(SHOP_ADAPTERS)) as ex:
-        futures = [ex.submit(fn, oem_numbers, part_name, car) for fn in SHOP_ADAPTERS]
-        for fut in concurrent.futures.as_completed(futures, timeout=25):
-            try:
-                out = fut.result()
-                results.extend(out["results"])
-                debug_log.append(out["debug"])
-            except Exception as e:
-                debug_log.append({"shop": "?", "error": str(e)})
-    return results, debug_log
 
 
 def _clean_shop_url(url: str, source: str) -> str:
     """
     Extract the real destination URL from Google Shopping redirect links.
-    Still used for eBay/Amazon results that come through Serper.
+    Used for eBay/Amazon results that come through Serper.
     """
     if not url or url == "#":
         return url
@@ -1743,8 +1392,9 @@ def _merge_price_results(primary: list, secondary: list) -> list:
 
 def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> list[dict]:
     """
-    Known shops (Motonet, AK24, Autodoc, Trodo) are queried directly — never
-    through Google Shopping. eBay/Amazon still use Serper for discovery.
+    Known shops (Motonet, AK24, Autodoc, Trodo) always get a direct search
+    link built from the best OEM number — no scraping, no bot-block risk.
+    eBay/Amazon are discovered live via Serper.
     """
     make   = car.get("make", "")
     model  = car.get("model", "")
@@ -1776,20 +1426,14 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
         if word and word.lower() in base_part.lower():
             base_part = re.sub(re.escape(word), "", base_part, flags=re.IGNORECASE).strip()
 
-    print(f"  {Fore.GREEN}✓ Price search — OEM: {oem_numbers[:1] or 'none'}, part: {base_part[:40]}{Style.RESET_ALL}")
-
     results = []
-    debug_log = []
 
-    # 1) Known shops — direct, parallel, only when we have an OEM number
-    #    (free-text search on these shops' own engines is unreliable).
-    if is_nordic and oem_numbers:
-        shop_results, shop_debug = _run_shop_adapters(oem_numbers, base_part, car)
-        results.extend(shop_results)
-        debug_log.extend(shop_debug)
+    # 1) Known Nordic shops — direct search-page links, always present
+    if is_nordic:
+        query_for_links = f"{year} {make} {model} {base_part}".strip()
+        results.extend(_direct_shop_links(oem_numbers, query_for_links))
 
-    # 2) eBay / Amazon via Serper — kept here because it's a genuine
-    #    discovery tool and has proven reliable for these specifically.
+    # 2) eBay / Amazon via Serper — genuine live discovery
     if SERPER_API_KEY:
         if oem_numbers:
             query = f"{oem_numbers[0]} {make} {model} {base_part}".strip()
@@ -1802,13 +1446,9 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
         global_shops = [r for r in serper_raw
                          if "ebay" in r.get("shop", "").lower() or "amazon" in r.get("shop", "").lower()]
         results = _merge_price_results(results, global_shops)
-        # For non-Nordic markets we have no dedicated adapters, so let
-        # whatever else Serper found through too.
         if not is_nordic:
             other_shops = [r for r in serper_raw if r not in global_shops]
             results = _merge_price_results(results, other_shops)
-
-    _LAST_PRICE_DEBUG["log"] = debug_log
 
     if not results:
         fallback_query = f"{year} {make} {model} {base_part}".strip()
@@ -1846,8 +1486,8 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
         for item in sorted(items, key=sort_key):
             source = item.get("source", item.get("seller", "Unknown"))
             src_low = source.lower()
-            # Only eBay/Amazon pass through this path now — known Nordic
-            # shops are handled by their own direct adapters.
+            # Only eBay/Amazon pass through this path — known Nordic shops
+            # get their own direct search links instead.
             if "ebay" not in src_low and "amazon" not in src_low:
                 continue
             key = re.sub(r"[^a-z].*", "", src_low.replace("ebay", "ebay"))[:15]
@@ -1896,7 +1536,7 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
 
 
 def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) -> list[dict]:
-    """Absolute last resort — only reached if every adapter AND Serper found nothing."""
+    """Absolute last resort — only reached if even direct shop links + Serper found nothing."""
     q   = urllib.parse.quote_plus(query)
     oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else q
     return [

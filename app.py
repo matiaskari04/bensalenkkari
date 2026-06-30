@@ -153,16 +153,6 @@ def api_prices():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/prices-debug", methods=["GET"])
-def api_prices_debug():
-    """
-    Diagnostics for the last price search: which shop adapters ran, what
-    URL each one hit, the HTTP status, how many candidate links it found,
-    and any error. Use this to see exactly why a shop adapter did or
-    didn't find a direct product link.
-    """
-    return jsonify(_mod._LAST_PRICE_DEBUG)
-
 @app.route("/api/youtube", methods=["POST"])
 def api_youtube():
     data = request.json or {}

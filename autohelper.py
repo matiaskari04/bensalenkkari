@@ -1074,6 +1074,92 @@ SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
 AMAZON_TAG   = os.environ.get("AMAZON_TAG", "")
 AUTODOC_AFF  = os.environ.get("AUTODOC_AFF", "")  # e.g. "bensalenkkari"
 
+# English -> Finnish part name translations for Finnish shop searches
+EN_TO_FI_PARTS = {
+    "brake pads":           "jarrupalat",
+    "brake discs":          "jarrulevyt",
+    "brake rotors":         "jarrulevyt",
+    "shock absorber":       "iskunvaimennin",
+    "strut":                "iskunvaimennin",
+    "control arm":          "tukivarsi",
+    "ball joint":           "pallonivel",
+    "tie rod":              "raidetanko",
+    "wheel bearing":        "pyörälaakeri",
+    "cv axle":              "vetoakseli",
+    "cv joint":             "tasonivelakseli",
+    "alternator":           "laturi",
+    "starter motor":        "käynnistin",
+    "water pump":           "vesipumppu",
+    "timing belt":          "hammashihna",
+    "drive belt":           "kiilahihna",
+    "serpentine belt":      "kiilahihna",
+    "thermostat":           "termostaatti",
+    "radiator":             "jäähdytin",
+    "oil filter":           "öljynsuodatin",
+    "air filter":           "ilmansuodatin",
+    "fuel filter":          "polttoainesuodatin",
+    "cabin filter":         "sisätilasuodatin",
+    "spark plugs":          "sytytystulpat",
+    "spark plug":           "sytytystulppa",
+    "clutch kit":           "kytkinsarja",
+    "clutch":               "kytkin",
+    "exhaust pipe":         "pakoputki",
+    "catalytic converter":  "katalysaattori",
+    "oxygen sensor":        "lambda-anturi",
+    "lambda sensor":        "lambda-anturi",
+    "fuel pump":            "polttoainepumppu",
+    "wiper blades":         "pyyhkijänsulat",
+    "wiper blade":          "pyyhkijänsulka",
+    "battery":              "akku",
+    "headlight":            "ajovalo",
+    "tail light":           "takavalo",
+    "mirror":               "peili",
+    "side mirror":          "sivupeili",
+    "lower control arm":    "alatukivarsi",
+    "upper control arm":    "ylätukivarsi",
+    "sway bar link":        "vakaajatanko",
+    "stabilizer link":      "vakaajatanko",
+    "track rod":            "raidetanko",
+    "caliper":              "jarrusatula",
+    "brake caliper":        "jarrusatula",
+    "intercooler":          "välijäähdytin",
+    "turbocharger":         "turboahdin",
+    "power steering pump":  "ohjaustehostinpumppu",
+    "gearbox oil":          "vaihteistoöljy",
+    "engine oil":           "moottoriöljy",
+    "coolant":              "jäähdytysneste",
+    "antifreeze":           "jäähdytysneste",
+    "brake fluid":          "jarruneste",
+    "spring":               "jousi",
+    "coil spring":          "kierrejousi",
+    "wishbone":             "tukivarsi",
+    "knuckle":              "ohjaussolkka",
+    "hub":                  "pyörännapa",
+    "driveshaft":           "vetoakseli",
+    "prop shaft":           "kardaaniakseli",
+    "exhaust manifold":     "pakosarjakaasutin",
+    "intake manifold":      "imusarjakaasutin",
+    "throttle body":        "kaasuläppäkotelo",
+    "mass air flow":        "ilmamassavirtausanturi",
+    "maf sensor":           "maf-anturi",
+    "abs sensor":           "abs-anturi",
+    "crankshaft sensor":    "kampiakselinanturi",
+    "camshaft sensor":      "nokka-akselianturi",
+    "engine mount":         "moottorin tuki",
+    "gearbox mount":        "vaihteiston tuki",
+}
+
+def _translate_part_to_fi(part: str) -> str:
+    """Translate English part name to Finnish for Finnish shop searches."""
+    low = part.lower()
+    best_key, best_len = None, 0
+    for key, fi in EN_TO_FI_PARTS.items():
+        if key in low and len(key) > best_len:
+            best_key, best_len = key, len(key)
+    if best_key:
+        return part.lower().replace(best_key, EN_TO_FI_PARTS[best_key])
+    return ""  # No translation found
+
 def _add_amazon_tag(url: str) -> str:
     if not AMAZON_TAG or not url or "amazon." not in url:
         return url
@@ -1148,6 +1234,22 @@ PREFERRED_SHOPS = {
 }
 
 
+def _merge_price_results(primary: list, secondary: list) -> list:
+    """Merge two price result lists, deduplicating by shop domain."""
+    seen_shops = {}
+    merged = []
+    BOOSTED = {"motonet", "ak24", "autodoc", "biltema", "trodo"}
+    for item in primary + secondary:
+        shop = item.get("shop", "")
+        key = re.sub(r"[^a-z].*", "", shop.lower())[:15]
+        max_per = 3 if key in BOOSTED else 2
+        count = seen_shops.get(key, 0)
+        if count < max_per:
+            seen_shops[key] = count + 1
+            merged.append(item)
+    return merged[:18]
+
+
 def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> list[dict]:
     """
     Search by OEM part number first (most accurate), fall back to name-based search.
@@ -1177,32 +1279,46 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
                 if kw not in oem_numbers:
                     oem_numbers.append(kw)
 
+    nordic_countries = {"FI", "SE", "NO", "EE"}
+    use_bilingual = country.upper() in nordic_countries
+
     if oem_numbers:
         primary = oem_numbers[0]
         base_part = part.split(",")[0].strip()
-        # Query: OEM number + make + model + part name for best Shopping results
         oem_query = f"{primary} {make} {model} {base_part}".strip()
-        # Fallback URL uses full descriptive query (better for Google Shopping)
         fallback_query = f"{year} {make} {model} {base_part}".strip()
         print(f"  {Fore.GREEN}✓ Searching by OEM part number: {primary}{Style.RESET_ALL}")
         if SERPER_API_KEY:
-            return _fetch_via_serper(oem_query, country, oem_numbers)
+            results = _fetch_via_serper(oem_query, country, oem_numbers)
+            # Also search with Finnish term for Nordic countries
+            if use_bilingual:
+                fi_part = _translate_part_to_fi(base_part)
+                if fi_part:
+                    fi_query = f"{primary} {make} {model} {fi_part}".strip()
+                    fi_results = _fetch_via_serper(fi_query, country, oem_numbers)
+                    results = _merge_price_results(results, fi_results)
+            return results
         else:
             return _fetch_fallback_links(fallback_query, country, oem_numbers)
     else:
-        # No OEM number found — fall back to descriptive search with full car context
-        # Use canonical part name from AI if available, otherwise raw user input
         canonical = (part_info or {}).get("canonical_name", "") or part
         base_part = canonical.split(",")[0].strip()
-        # Strip car info that may already be in the part name to avoid duplication
         for word in [make, model, year, engine]:
             if word and word.lower() in base_part.lower():
                 base_part = re.sub(re.escape(word), "", base_part, flags=re.IGNORECASE).strip()
-        # Always include year + make + model + engine for specificity
         query = " ".join(filter(None, [year, make, model, engine, base_part])).strip()
-        print(f"  {Fore.YELLOW}⚠  No OEM number found — searching by: {query[:60]}{Style.RESET_ALL}")
+        print(f"  {Fore.YELLOW}⚠  No OEM number — searching by: {query[:60]}{Style.RESET_ALL}")
         if SERPER_API_KEY:
-            return _fetch_via_serper(query, country)
+            results = _fetch_via_serper(query, country)
+            # Also search with Finnish term for Nordic countries
+            if use_bilingual:
+                fi_part = _translate_part_to_fi(base_part)
+                if fi_part:
+                    fi_query = " ".join(filter(None, [year, make, model, engine, fi_part])).strip()
+                    print(f"  {Fore.CYAN}🇫🇮 Also searching in Finnish: {fi_query[:60]}{Style.RESET_ALL}")
+                    fi_results = _fetch_via_serper(fi_query, country)
+                    results = _merge_price_results(results, fi_results)
+            return results
         else:
             return _fetch_fallback_links(query, country)
 

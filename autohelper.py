@@ -1591,9 +1591,11 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         " \"reversible\": bool, \"worth_score\": int, \"notes\": \"str\",\n"
         "      \"requires\": [], \"effects\": { \"power_hp\": int, \"torque_nm\": int,"
         " \"handling\": int, \"fuel_l100km\": float, \"reliability\": int, \"daily_usability\": int } } ] } ] }\n\n"
-        "Stage 1: bolt-on only (remap, air filter, cat-back). Stage 2: hardware (suspension, brakes, intake). Stage 3: major (if applicable).\n"
-        "2-4 mods per stage. worth_score 1-5 (be honest, not everything is worth 5). Prices in EUR for Finnish market.\n"
-        "6-8 cosmetics. requires[] must be array. popular_brands[] must be array."
+        "REQUIRED: Return EXACTLY 3 levels in the levels array. Every level must have mods.\n"
+        "Stage 1 (bolt-on): remap, sport air filter, exhaust. 2-3 mods.\n"
+        "Stage 2 (hardware): downpipe, intercooler, sport suspension, brakes. 2-3 mods.\n"
+        "Stage 3 (major): turbo upgrade, fueling, internals, or advanced chassis. 2-3 mods even if modest.\n"
+        "worth_score 1-5 realistic. Prices EUR Finnish market.\n"
     )
     print(f"  [tuning] calling AI, GROQ_KEY={'set' if GROQ_API_KEY else 'MISSING'}, GEMINI_KEY={'set' if GEMINI_API_KEY else 'MISSING'}")
     raw = claude(prompt, system=system, max_tokens=2500)

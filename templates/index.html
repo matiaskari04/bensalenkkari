@@ -1846,7 +1846,7 @@ function openTuning(car) {
   document.body.style.overflow = 'hidden';
 
   // Check localStorage cache first (survives server restarts)
-  var _cacheKey = 'tuning:' + (car.vin||car.make||'') + ':' + LANG;
+  var _cacheKey = 'tuning:v2:' + (car.vin||car.make||'') + ':' + LANG;  // v2 = 3 levels
   var _cached = null;
   try {
     var _raw = localStorage.getItem(_cacheKey);
@@ -2101,6 +2101,13 @@ function renderTuning(data) {
       +'</div>';
   }
   var levels = ensureArray(data.levels);
+  // Ensure we always have 3 levels even if AI returned fewer
+  var LV_DEFAULTS = [
+    {level:1, name: LANG==='fi'?'Stage 1 — Perustason viritys':'Stage 1 — Bolt-on', description:'', total_hp:0, total_cost_eur:0, mods:[]},
+    {level:2, name: LANG==='fi'?'Stage 2 — Tehostettu viritys':'Stage 2 — Hardware', description:'', total_hp:0, total_cost_eur:0, mods:[]},
+    {level:3, name: LANG==='fi'?'Stage 3 — Äärimmäinen viritys':'Stage 3 — Major', description:'', total_hp:0, total_cost_eur:0, mods:[]},
+  ];
+  while (levels.length < 3) levels.push(LV_DEFAULTS[levels.length]);
   if (!levels.length && data.mods) {
     html += ensureArray(data.mods).map(renderMod).join('');
   } else {

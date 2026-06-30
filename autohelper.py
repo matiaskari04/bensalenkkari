@@ -1021,7 +1021,7 @@ JSON structure:
 
 Rules:
 - part_numbers: 4-6 entries, genuine OEM first then quality aftermarket (Moog/TRW/Lemforder/SKF=Premium, Febi/Meyle/Delphi=Good). Only confident numbers.
-- replacement_summary: numbered steps (1. 2. 3.) a beginner can follow. Include torque values in Nm, key safety steps, common mistakes, whether alignment is needed after. 6-8 steps, concise but complete.
+- replacement_summary: numbered steps a beginner can follow. CRITICAL FORMAT: each step starts with "N. " and steps are separated by a literal \\n newline character within the JSON string, e.g. "1. First step text\\n2. Second step text\\n3. Third step text". Never write multiple steps in one unbroken paragraph. Include torque values in Nm, key safety steps, common mistakes, whether alignment is needed after. 6-8 steps, concise but complete.
 - All text in {text_lang} except brand/part names and the type/quality enum values."""
 
     raw = claude(prompt, system=system, max_tokens=1300)
@@ -1278,6 +1278,67 @@ def _add_autodoc_aff(url: str) -> str:
         return url
     return f"{url}{sep}utm_source={AUTODOC_AFF}&utm_medium=referral"
 
+# Cache for scraped product links — avoids re-scraping the same search repeatedly
+_scrape_link_cache = {}
+SCRAPE_LINK_CACHE_TTL = 86400  # 24h
+
+def _scrape_product_link(search_url: str, domain_keyword: str, extra_exclude: list = None) -> str:
+    """
+    Fetch a shop's search/category page and try to pull out the first real
+    product link, instead of sending the user to a bare search results page.
+    Fails safe: any error, timeout, or no-match just returns None so the
+    caller can fall back to the search URL itself.
+    """
+    import time as _slt
+    cache_key = search_url
+    hit = _scrape_link_cache.get(cache_key)
+    if hit and (_slt.time() - hit[0]) < SCRAPE_LINK_CACHE_TTL:
+        return hit[1]
+
+    result = None
+    try:
+        r = requests.get(
+            search_url,
+            timeout=6,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"},
+        )
+        if r.ok:
+            soup = BeautifulSoup(r.text, "html.parser")
+            exclude = ["/login", "/kirjaudu", "/cart", "/ostoskori", "/checkout",
+                       "/help", "/ohje", "/blog", "/contact", "/yhteystiedot",
+                       "/about", "/terms", "/privacy", "/account", "/tili",
+                       "javascript:", "#", "/search", "/haku", "/info/"]
+            if extra_exclude:
+                exclude += extra_exclude
+            seen = set()
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                if not href or href in seen:
+                    continue
+                seen.add(href)
+                full_url = urllib.parse.urljoin(search_url, href)
+                if domain_keyword not in full_url.lower():
+                    continue
+                if any(p in href.lower() for p in exclude):
+                    continue
+                path = urllib.parse.urlparse(full_url).path
+                # Skip shallow/category-root links — real product pages have depth
+                if len(path.strip("/").split("/")) < 2:
+                    continue
+                result = full_url
+                break
+    except Exception:
+        result = None
+
+    # Cache even a None result briefly so repeated failures don't hammer the site
+    _scrape_link_cache[cache_key] = (_slt.time(), result)
+    if len(_scrape_link_cache) > 500:
+        oldest = min(_scrape_link_cache, key=lambda k: _scrape_link_cache[k][0])
+        del _scrape_link_cache[oldest]
+    return result
+
+
 def _clean_shop_url(url: str, source: str) -> str:
     """
     Extract the real destination URL from Google Shopping redirect links.
@@ -1377,6 +1438,46 @@ def _merge_price_results(primary: list, secondary: list) -> list:
     return merged[:18]
 
 
+def _ensure_finnish_shops(results: list, oem_numbers: list, country: str) -> list:
+    """
+    Serper's Google Shopping data sometimes only surfaces eBay/Amazon and
+    misses Finnish/Nordic retailers entirely for a given query, even though
+    those shops DO have the part (confirmed: searching the OEM number
+    directly on Motonet/Autodoc/AK24 reliably finds it). Rather than only
+    falling back to these shops when Serper finds NOTHING at all, always
+    make sure they're present alongside whatever Serper did find.
+    """
+    if country.upper() not in {"FI", "SE", "NO", "EE"} or not oem_numbers:
+        return results
+
+    present = {re.sub(r"[^a-z]", "", (r.get("shop") or "").lower())[:10] for r in results}
+    oem_q = urllib.parse.quote_plus(oem_numbers[0])
+    guaranteed = []
+
+    if not any("autodoc" in p for p in present):
+        search_page = f"https://www.autodoc.fi/search?query={oem_q}"
+        scraped = _scrape_product_link(search_page, "autodoc.fi", extra_exclude=["/varaosat/"])
+        guaranteed.append({"shop": "Autodoc", "part": "", "price": None, "currency": "EUR",
+                            "url": _add_autodoc_aff(scraped or search_page),
+                            "shipping": "3-7 days", "note": "Katso sivustolta"})
+
+    if not any("motonet" in p for p in present):
+        search_page = f"https://www.motonet.fi/fi/search?q={oem_q}"
+        scraped = _scrape_product_link(search_page, "motonet.fi")
+        guaranteed.append({"shop": "Motonet", "part": "", "price": None, "currency": "EUR",
+                            "url": scraped or search_page,
+                            "shipping": "1-3 days (FI)", "note": "Katso sivustolta"})
+
+    if not any("ak24" in p for p in present):
+        search_page = f"https://www.ak24.fi/fi/search?term={oem_q}"
+        scraped = _scrape_product_link(search_page, "ak24.fi")
+        guaranteed.append({"shop": "AK24", "part": "", "price": None, "currency": "EUR",
+                            "url": scraped or search_page,
+                            "shipping": "3-5 days", "note": "Katso sivustolta"})
+
+    return results + guaranteed
+
+
 def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> list[dict]:
     """
     Search by OEM part number first (most accurate), fall back to name-based search.
@@ -1424,7 +1525,7 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
                     fi_query = f"{primary} {make} {model} {fi_part}".strip()
                     fi_results = _fetch_via_serper(fi_query, country, oem_numbers)
                     results = _merge_price_results(results, fi_results)
-            return results
+            return _ensure_finnish_shops(results, oem_numbers, country)
         else:
             return _fetch_fallback_links(fallback_query, country, oem_numbers)
     else:
@@ -1545,10 +1646,17 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
             for name in ALLOWED_SHOPS:
                 if name in src:
                     return True
-            # Block shops from irrelevant country TLDs
-            for tld in BLOCKED_TLDS:
-                if tld + '/' in (link or '') or src.endswith(tld.strip('.')):
-                    return False
+            # Block only based on the ACTUAL domain TLD of the link — never
+            # the shop's display name, which can accidentally end in letters
+            # that collide with TLD strings (e.g. "AutoSpares" ends in "es").
+            if link:
+                try:
+                    domain = urllib.parse.urlparse(link).netloc.lower()
+                except Exception:
+                    domain = ""
+                for tld in BLOCKED_TLDS:
+                    if domain.endswith(tld):
+                        return False
             # Allow anything else (unknown shops might still be useful)
             return True
 
@@ -1598,9 +1706,13 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 if "ebay" in src_low:
                     item_url = f"https://www.ebay.de/sch/i.html?_nkw={q}"
                 elif "autodoc" in src_low:
-                    item_url = _add_autodoc_aff(f"https://www.autodoc.fi/search?query={oem_q}")
+                    search_page = f"https://www.autodoc.fi/search?query={oem_q}"
+                    scraped = _scrape_product_link(search_page, "autodoc.fi", extra_exclude=["/varaosat/"])
+                    item_url = _add_autodoc_aff(scraped or search_page)
                 elif "motonet" in src_low:
-                    item_url = f"https://www.motonet.fi/fi/search?q={oem_q}"
+                    search_page = f"https://www.motonet.fi/fi/search?q={oem_q}"
+                    scraped = _scrape_product_link(search_page, "motonet.fi")
+                    item_url = scraped or search_page
                 elif "amazon" in src_low:
                     item_url = _add_amazon_tag(f"https://www.amazon.de/s?k={q}")
                 elif "biltema" in src_low:
@@ -1608,7 +1720,9 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 elif "trodo" in src_low:
                     item_url = f"https://trodo.com/en/search?q={oem_q}"
                 elif "ak24" in src_low:
-                    item_url = f"https://www.ak24.fi/fi/search?term={oem_q}"
+                    search_page = f"https://www.ak24.fi/fi/search?term={oem_q}"
+                    scraped = _scrape_product_link(search_page, "ak24.fi")
+                    item_url = scraped or search_page
                 else:
                     # Build a site-specific Google search for this shop
                     # This is better than a generic search and often finds the product
@@ -1645,11 +1759,17 @@ def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) ->
     # Use OEM number for shop searches when available (works better on Autodoc/Motonet)
     oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else q
     gsh = f"https://www.google.com/search?tbm=shop&q={q}&gl={gl}"
+    autodoc_search = f"https://www.autodoc.fi/search?query={oem_q}"
+    motonet_search = f"https://www.motonet.fi/fi/search?q={oem_q}"
+    ak24_search    = f"https://www.ak24.fi/fi/search?term={oem_q}"
+    autodoc_url = _add_autodoc_aff(_scrape_product_link(autodoc_search, "autodoc.fi", extra_exclude=["/varaosat/"]) or autodoc_search)
+    motonet_url = _scrape_product_link(motonet_search, "motonet.fi") or motonet_search
+    ak24_url    = _scrape_product_link(ak24_search, "ak24.fi") or ak24_search
     return [
         {"shop": "Google Shopping",  "price": None, "url": gsh,                                                      "note": "Kaikki kaupat — klikkaa vertaillaksesi"},
-        {"shop": "Autodoc",          "price": None, "url": _add_autodoc_aff(f"https://www.autodoc.fi/search?query={oem_q}"), "note": "Katso sivustolta", "shipping": "3-7 days"},
-        {"shop": "Motonet",          "price": None, "url": f"https://www.motonet.fi/fi/search?q={oem_q}",             "note": "Katso sivustolta", "shipping": "1-3 days (FI)"},
-        {"shop": "AK24",             "price": None, "url": f"https://www.ak24.fi/fi/search?term={oem_q}",             "note": "Katso sivustolta", "shipping": "3-5 days"},
+        {"shop": "Autodoc",          "price": None, "url": autodoc_url, "note": "Katso sivustolta", "shipping": "3-7 days"},
+        {"shop": "Motonet",          "price": None, "url": motonet_url, "note": "Katso sivustolta", "shipping": "1-3 days (FI)"},
+        {"shop": "AK24",             "price": None, "url": ak24_url,    "note": "Katso sivustolta", "shipping": "3-5 days"},
         {"shop": "Trodo",            "price": None, "url": f"https://trodo.com/en/search?q={q}",                     "note": "Katso sivustolta", "shipping": "3-7 days"},
         {"shop": "Biltema",          "price": None, "url": f"https://www.biltema.fi/fi/search?query={q}",            "note": "Katso sivustolta", "shipping": "1-3 days"},
         {"shop": "Amazon.de",        "price": None, "url": _add_amazon_tag(f"https://www.amazon.de/s?k={q}"),        "note": "Katso sivustolta", "shipping": "1-3 days"},

@@ -169,6 +169,12 @@ GEMINI_MODEL      = "gemini-2.0-flash"
 MISTRAL_API_KEY   = os.environ.get("MISTRAL_API_KEY", "")
 MISTRAL_MODEL     = "mistral-small-latest"
 MISTRAL_URL       = "https://api.mistral.ai/v1/chat/completions"
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL   = "meta-llama/llama-3.3-70b-instruct:free"
+OPENROUTER_URL     = "https://openrouter.ai/api/v1/chat/completions"
+COHERE_API_KEY    = os.environ.get("COHERE_API_KEY", "")
+COHERE_MODEL      = "command-r"
+COHERE_URL        = "https://api.cohere.com/v2/chat"
 _tuning_cache = {}
 TUNING_CACHE_TTL = 86400
 GEMINI_URL        = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
@@ -292,6 +298,67 @@ def _call_mistral(prompt: str, system: str, max_tokens: int) -> str:
             raise Exception(f"Mistral connection failed: {e}")
 
 
+def _call_openrouter(prompt: str, system: str, max_tokens: int) -> str:
+    if not OPENROUTER_API_KEY:
+        raise Exception("OPENROUTER_API_KEY not set")
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    for attempt in range(3):
+        try:
+            r = requests.post(
+                OPENROUTER_URL,
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://bensalenkkari.onrender.com",
+                    "X-Title": "Bensalenkkari",
+                },
+                json={"model": OPENROUTER_MODEL, "messages": messages, "max_tokens": max_tokens, "temperature": 0.3},
+                timeout=45,
+            )
+            if r.status_code == 429:
+                raise Exception(f"429 Rate limit: {r.text[:100]}")
+            if not r.ok:
+                raise Exception(f"{r.status_code} {r.reason}: {r.text[:200]}")
+            return r.json()["choices"][0]["message"]["content"].strip()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+            raise Exception(f"OpenRouter connection failed: {e}")
+
+
+def _call_cohere(prompt: str, system: str, max_tokens: int) -> str:
+    if not COHERE_API_KEY:
+        raise Exception("COHERE_API_KEY not set")
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    for attempt in range(3):
+        try:
+            r = requests.post(
+                COHERE_URL,
+                headers={"Authorization": f"Bearer {COHERE_API_KEY}", "Content-Type": "application/json"},
+                json={"model": COHERE_MODEL, "messages": messages, "max_tokens": max_tokens, "temperature": 0.3},
+                timeout=45,
+            )
+            if r.status_code == 429:
+                raise Exception(f"429 Rate limit: {r.text[:100]}")
+            if not r.ok:
+                raise Exception(f"{r.status_code} {r.reason}: {r.text[:200]}")
+            data = r.json()
+            # Cohere v2 response format
+            return data["message"]["content"][0]["text"].strip()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+            raise Exception(f"Cohere connection failed: {e}")
+
+
 def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
     """
     Call the configured AI provider with automatic fallback.
@@ -300,17 +367,21 @@ def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
     # Build provider chain: configured primary → fallbacks in order
     if AI_PROVIDER == "anthropic":
         chain = [
-            (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic"),
-            (_call_groq,      GROQ_API_KEY,      "Groq"),
-            (_call_gemini,    GEMINI_API_KEY,    "Gemini"),
-            (_call_mistral,   MISTRAL_API_KEY,   "Mistral"),
+            (_call_anthropic,   ANTHROPIC_API_KEY,  "Anthropic"),
+            (_call_groq,        GROQ_API_KEY,       "Groq"),
+            (_call_gemini,      GEMINI_API_KEY,     "Gemini"),
+            (_call_mistral,     MISTRAL_API_KEY,    "Mistral"),
+            (_call_openrouter,  OPENROUTER_API_KEY, "OpenRouter"),
+            (_call_cohere,      COHERE_API_KEY,     "Cohere"),
         ]
     else:
         chain = [
-            (_call_groq,      GROQ_API_KEY,      "Groq"),
-            (_call_gemini,    GEMINI_API_KEY,    "Gemini"),
-            (_call_mistral,   MISTRAL_API_KEY,   "Mistral"),
-            (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic"),
+            (_call_groq,        GROQ_API_KEY,       "Groq"),
+            (_call_gemini,      GEMINI_API_KEY,     "Gemini"),
+            (_call_mistral,     MISTRAL_API_KEY,    "Mistral"),
+            (_call_openrouter,  OPENROUTER_API_KEY, "OpenRouter"),
+            (_call_cohere,      COHERE_API_KEY,     "Cohere"),
+            (_call_anthropic,   ANTHROPIC_API_KEY,  "Anthropic"),
         ]
 
     last_err = None

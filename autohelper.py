@@ -1556,7 +1556,8 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 if "ebay" in src_low:
                     item_url = f"https://www.ebay.de/sch/i.html?_nkw={q}"
                 elif "autodoc" in src_low:
-                    item_url = _add_autodoc_aff(f"https://www.autodoc.fi/search?query={q}")
+                    # Autodoc search works best with part number in the URL
+                    item_url = _add_autodoc_aff(f"https://www.autodoc.fi/search?query={q}&utm_source=bensalenkkari")
                 elif "motonet" in src_low:
                     item_url = f"https://www.motonet.fi/fi/search?q={q}"
                 elif "amazon" in src_low:
@@ -1594,14 +1595,14 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
 def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) -> list[dict]:
     q   = urllib.parse.quote_plus(query)
     gl  = country.lower()
-    # Google Shopping works better with descriptive queries than bare OEM numbers
-    # Use the full query (which includes make/model/part name) for the Shopping link
+    # Use OEM number for shop searches when available (works better on Autodoc/Motonet)
+    oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else q
     gsh = f"https://www.google.com/search?tbm=shop&q={q}&gl={gl}"
     return [
         {"shop": "Google Shopping",  "price": None, "url": gsh,                                                      "note": "Kaikki kaupat — klikkaa vertaillaksesi"},
-        {"shop": "Autodoc",          "price": None, "url": _add_autodoc_aff(f"https://www.autodoc.fi/search?query={q}"), "note": "Katso sivustolta", "shipping": "3-7 days"},
-        {"shop": "Motonet",          "price": None, "url": f"https://www.motonet.fi/fi/search?q={q}",                "note": "Katso sivustolta", "shipping": "1-3 days (FI)"},
-        {"shop": "AK24",             "price": None, "url": f"https://www.ak24.fi/fi/search?term={q}",                "note": "Katso sivustolta", "shipping": "3-5 days"},
+        {"shop": "Autodoc",          "price": None, "url": _add_autodoc_aff(f"https://www.autodoc.fi/search?query={oem_q}"), "note": "Katso sivustolta", "shipping": "3-7 days"},
+        {"shop": "Motonet",          "price": None, "url": f"https://www.motonet.fi/fi/search?q={oem_q}",             "note": "Katso sivustolta", "shipping": "1-3 days (FI)"},
+        {"shop": "AK24",             "price": None, "url": f"https://www.ak24.fi/fi/search?term={oem_q}",             "note": "Katso sivustolta", "shipping": "3-5 days"},
         {"shop": "Trodo",            "price": None, "url": f"https://trodo.com/en/search?q={q}",                     "note": "Katso sivustolta", "shipping": "3-7 days"},
         {"shop": "Biltema",          "price": None, "url": f"https://www.biltema.fi/fi/search?query={q}",            "note": "Katso sivustolta", "shipping": "1-3 days"},
         {"shop": "Amazon.de",        "price": None, "url": _add_amazon_tag(f"https://www.amazon.de/s?k={q}"),        "note": "Katso sivustolta", "shipping": "1-3 days"},

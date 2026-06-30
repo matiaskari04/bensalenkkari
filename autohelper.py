@@ -1291,6 +1291,9 @@ def _clean_shop_url(url: str, source: str) -> str:
     # Try to extract real URL from Google redirect
     # Pattern: ...&url=https%3A%2F%2F... or ...adurl=https%3A%2F%2F...
     if "google.com" in url or "ibp=oshop" in url or "prds=" in url:
+        # If it's literally a google.com/search URL (not a redirect), return None
+        if re.match(r"https?://www\.google\.com/search", url) and "adurl" not in url and "prds" not in url:
+            return None
         # Try prds=...,url:https%3A%2F%2F... format
         prds_match = re.search(r",url:(https?[^,&]+)", url)
         if prds_match:
@@ -1517,12 +1520,45 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 price = 9999
             return (pref, price)
 
+        # Shops known to ship to Finland / pan-European with Finnish presence
+        ALLOWED_SHOPS = {
+            # Finnish
+            'motonet', 'ak24', 'biltema', 'raskone', 'hankkija', 'topautoosat',
+            'koivunen', 'fixus', 'autoduo',
+            # Major pan-European that ship to FI
+            'autodoc', 'trodo', 'mekonomen', 'oscaro', 'kfzteile24',
+            'autoteile24', 'eurocarparts', 'skruvat', 'bildelaronline',
+            'autospecialist', 'teilehaber', 'mecatechnic',
+            # Global marketplaces
+            'ebay', 'amazon',
+        }
+        # Country TLDs that are irrelevant for Finnish buyers
+        BLOCKED_TLDS = {'.pt', '.es', '.it', '.fr', '.pl', '.cz', '.hu',
+                        '.ro', '.bg', '.hr', '.rs', '.tr', '.gr', '.ua'}
+
+        def _is_allowed_shop(source: str, link: str) -> bool:
+            src = source.lower()
+            # Always allow known good shops
+            for name in ALLOWED_SHOPS:
+                if name in src:
+                    return True
+            # Block shops from irrelevant country TLDs
+            for tld in BLOCKED_TLDS:
+                if tld + '/' in (link or '') or src.endswith(tld.strip('.')):
+                    return False
+            # Allow anything else (unknown shops might still be useful)
+            return True
+
         results = []
         seen = {}  # shop_key -> count
         # Major Finnish/Nordic shops get more slots
         BOOSTED = {'motonet', 'ak24', 'autodoc', 'biltema', 'trodo'}
         for item in sorted(items, key=sort_key):
             source = item.get("source", item.get("seller", "Unknown"))
+            raw_link = item.get("link", item.get("url", ""))
+            # Skip shops not relevant for Finnish buyers
+            if not _is_allowed_shop(source, raw_link):
+                continue
             key = re.sub(r"[^a-z].*", "", source.lower().replace("ebay", "ebay"))
             key = key.split(".")[0][:15]
             max_per_shop = 3 if key in BOOSTED else 2
@@ -1567,12 +1603,16 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 elif "trodo" in src_low:
                     item_url = f"https://trodo.com/en/search?q={q}"
                 else:
-                    # Try to build direct URL from source domain
+                    # Build a site-specific Google search for this shop
+                    # This is better than a generic search and often finds the product
                     domain = re.sub(r"[^a-z0-9.-].*", "", source.lower()).strip(".")
                     if domain and "." in domain:
+                        # Try direct shop search first
                         item_url = f"https://{domain}/search?q={q}"
                     else:
-                        item_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(source+' '+part_title)}"
+                        # Use site: operator to search within the shop
+                        site_q = urllib.parse.quote_plus(f"site:{source.lower().replace(' ','')} {part_title}")
+                        item_url = f"https://www.google.com/search?q={site_q}"
             if "autodoc." in (item_url or "").lower():
                 item_url = _add_autodoc_aff(item_url)
             results.append({

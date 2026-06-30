@@ -1305,15 +1305,25 @@ _LAST_PRICE_DEBUG = {"log": []}
 
 
 def _http_get(url: str, timeout: int = 5):
-    """Shared GET with a normal browser UA. Returns (response_or_None, error_str_or_None)."""
+    """Shared GET with a full browser-like header set. Returns (response_or_None, error_str_or_None)."""
     try:
         r = requests.get(
             url,
             timeout=timeout,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-                "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Cache-Control": "max-age=0",
+                "DNT": "1",
             },
         )
         return r, None
@@ -1321,15 +1331,25 @@ def _http_get(url: str, timeout: int = 5):
         return None, str(e)
 
 
+def _normalize_for_match(s: str) -> str:
+    """Strip everything but letters/digits and uppercase, for loose comparison."""
+    return re.sub(r"[^A-Za-z0-9]", "", s or "").upper()
+
+
 def _find_product_links(html: str, base_url: str, domain_keyword: str,
+                         oem_number: str = None,
                          require_path_contains: str = None,
                          extra_exclude: list = None, max_results: int = 3) -> list:
     """
     Parse a shop's search-results HTML and return up to max_results candidate
     product links (with their link text, for name/price extraction).
-    If require_path_contains is given (e.g. "/tuote/" for Motonet), only
-    links matching that confirmed product-page pattern are considered —
-    far more precise than a generic depth heuristic.
+
+    If oem_number is given, candidates are verified: only links whose URL or
+    visible text actually contains the OEM/article number are trusted. This
+    matters because search-results pages often show "related" or filler
+    products even for a search with no real hit — without this check we'd
+    confidently return something irrelevant (e.g. a cabin fan for a ball
+    joint search) instead of admitting we didn't find a real match.
     """
     soup = BeautifulSoup(html, "html.parser")
     exclude = ["/login", "/kirjaudu", "/cart", "/ostoskori", "/checkout", "/kassa",
@@ -1340,7 +1360,7 @@ def _find_product_links(html: str, base_url: str, domain_keyword: str,
         exclude += extra_exclude
 
     seen = set()
-    candidates = []
+    all_candidates = []
     for a in soup.find_all("a", href=True):
         href = a["href"]
         if not href or href in seen:
@@ -1356,15 +1376,39 @@ def _find_product_links(html: str, base_url: str, domain_keyword: str,
             if require_path_contains not in path.lower():
                 continue
         else:
-            # No confirmed pattern — fall back to a depth heuristic so we
-            # skip shallow category-root / nav links.
             if len(path.strip("/").split("/")) < 2:
                 continue
         text = a.get_text(strip=True)
-        candidates.append({"url": full_url, "text": text})
-        if len(candidates) >= max_results:
+        all_candidates.append({"url": full_url, "text": text})
+        if len(all_candidates) >= 25:  # collect a reasonable pool before filtering
             break
-    return candidates
+
+    if not oem_number:
+        return all_candidates[:max_results]
+
+    norm_oem = _normalize_for_match(oem_number)
+    if not norm_oem:
+        return all_candidates[:max_results]
+
+    verified = []
+    for c in all_candidates:
+        if norm_oem in _normalize_for_match(c["text"]) or norm_oem in _normalize_for_match(c["url"]):
+            verified.append(c)
+        if len(verified) >= max_results:
+            break
+    return verified
+
+
+def _page_says_no_results(html: str) -> bool:
+    """Detect common 'no results' phrasing so we don't scrape filler/
+    recommendation widgets off an otherwise-empty search page."""
+    low = html.lower()
+    markers = [
+        "ei tuloksia", "ei hakutuloksia", "0 tulosta", "0 tulokset",
+        "no results", "no products found", "hakusi ei tuottanut tulosta",
+        "emme löytäneet", "no matching products",
+    ]
+    return any(m in low for m in markers)
 
 
 def _extract_price_near(text: str):
@@ -1447,7 +1491,11 @@ def _adapter_motonet(oem_numbers: list, part_name: str, car: dict) -> dict:
         if not r.ok:
             debug["error"] = f"HTTP {r.status_code}"
             continue
-        found = _find_product_links(r.text, url, "motonet.fi", require_path_contains="/tuote/")
+        if _page_says_no_results(r.text):
+            debug["url"] = url
+            debug["error"] = "no results on page"
+            continue
+        found = _find_product_links(r.text, url, "motonet.fi", oem_number=num, require_path_contains="/tuote/")
         if found:
             candidates = found
             debug["url"] = url
@@ -1476,7 +1524,11 @@ def _adapter_autodoc(oem_numbers: list, part_name: str, car: dict) -> dict:
             debug["error"] = f"HTTP {r.status_code}"
             continue
         # Confirmed pattern: product pages live at /autonosat/{category}-{id}/{make}/{model}/...
-        found = _find_product_links(r.text, url, "autodoc.fi",
+        if _page_says_no_results(r.text):
+            debug["url"] = url
+            debug["error"] = "no results on page"
+            continue
+        found = _find_product_links(r.text, url, "autodoc.fi", oem_number=num,
                                      require_path_contains="/autonosat/",
                                      extra_exclude=["/varaosat/"])
         if found:
@@ -1508,7 +1560,11 @@ def _adapter_ak24(oem_numbers: list, part_name: str, car: dict) -> dict:
             debug["error"] = f"HTTP {r.status_code}"
             continue
         # No confirmed product-URL pattern yet — generic depth heuristic.
-        found = _find_product_links(r.text, url, "ak24.fi")
+        if _page_says_no_results(r.text):
+            debug["url"] = url
+            debug["error"] = "no results on page"
+            continue
+        found = _find_product_links(r.text, url, "ak24.fi", oem_number=num)
         if found:
             candidates = found
             debug["url"] = url
@@ -1537,7 +1593,11 @@ def _adapter_trodo(oem_numbers: list, part_name: str, car: dict) -> dict:
         if not r.ok:
             debug["error"] = f"HTTP {r.status_code}"
             continue
-        found = _find_product_links(r.text, url, "trodo.com")
+        if _page_says_no_results(r.text):
+            debug["url"] = url
+            debug["error"] = "no results on page"
+            continue
+        found = _find_product_links(r.text, url, "trodo.com", oem_number=num)
         if found:
             candidates = found
             debug["url"] = url

@@ -22,6 +22,7 @@ fetch_prices          = _mod.fetch_prices
 search_youtube        = _mod.search_youtube
 get_exploded_view_images = _mod.get_exploded_view_images
 get_tuning_info          = _mod.get_tuning_info
+get_tuning_level         = _mod.get_tuning_level
 AMBIGUOUS_PARTS       = None   # resolved at request time
 
 app = Flask(__name__)
@@ -206,6 +207,21 @@ def api_tuning():
     try:
         info = get_tuning_info(car, lang=lang)
         return jsonify(info)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/tuning-level", methods=["POST"])
+def api_tuning_level():
+    data      = request.json or {}
+    car       = data.get("car") or {}
+    level     = int(data.get("level", 1))
+    lang      = data.get("lang", "fi")
+    stock_hp  = int(data.get("stock_hp", 0))
+    stock_tq  = int(data.get("stock_torque", 0))
+    try:
+        result = get_tuning_level(car, level, lang=lang,
+                                  stock_hp=stock_hp, stock_torque=stock_tq)
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -1482,6 +1482,74 @@ def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) ->
     ]
 
 
+def get_tuning_level(car: dict, level: int, lang: str = "fi", stock_hp: int = 0, stock_torque: int = 0) -> dict:
+    """Fetch one tuning stage on demand. ~800 tokens vs 2500 for all 3."""
+    import time as _tc
+    make = car.get("make", ""); model = car.get("model", "")
+    year = car.get("year", ""); engine = car.get("engine", "")
+    car_str = f"{year} {make} {model} {engine}".strip()
+    cache_key = f"tuning_level:v1:{car_str.lower()}:s{level}:{lang}"
+    hit = _tuning_cache.get(cache_key)
+    if hit and (_tc.time() - hit[0]) < TUNING_CACHE_TTL:
+        return hit[1]
+    stage_info = {
+        1: "Stage 1: bolt-on. Remap, sport air filter, cat-back exhaust. 2-3 mods.",
+        2: "Stage 2: hardware. Downpipe, intercooler, sport suspension, brakes. 2-3 mods.",
+        3: "Stage 3: major. Turbo, fueling, internals, coilovers. 2-3 mods.",
+    }.get(level, f"Stage {level}: upgrades. 2-3 mods.")
+    lang_instr = "ALL text FINNISH only." if lang == "fi" else "ALL text ENGLISH only."
+    system = f"Automotive tuning expert. JSON only. No markdown. Conservative estimates. {lang_instr}"
+    prev_hp = stock_hp + (20 if level == 2 else 45 if level == 3 else 0)
+    lines = [
+        f"Car: {car_str}",
+        f"Stock: {stock_hp}hp / {stock_torque}Nm. Previous stages approx: {prev_hp}hp",
+        f"Return JSON for Stage {level} ONLY: {stage_info}",
+        '{ "level": int, "name": "str", "description": "str", "total_hp": int, "total_torque": int, "total_cost_eur": int,',
+        '  "mods": [{ "name": "str", "category": "str", "description": "str", "hp_gain": int, "torque_gain": int,',
+        '    "price_eur": int, "price_range": "str", "difficulty": "str", "reversible": bool, "worth_score": int,',
+        '    "notes": "str", "requires": [], "effects": {"power_hp": int, "torque_nm": int,',
+        '    "handling": int, "fuel_l100km": float, "reliability": int, "daily_usability": int}}]}',
+        f"Realistic gains: NA engine S1=5-15hp, turbo S1=15-35hp. Language: {lang}.",
+    ]
+    prompt = "\n".join(lines)
+    raw = claude(prompt, system=system, max_tokens=1000)
+    if raw.startswith("[AI error:"):
+        return {"error": raw[:200], "level": level, "mods": []}
+    try:
+        import re as _re, json as _json
+        s = _re.sub(r"```json|```", "", raw).strip()
+        s = "".join(ch if ord(ch) >= 32 else " " for ch in s)
+        def _fq(txt):
+            out, i = [], 0
+            while i < len(txt):
+                if txt[i] == "'" and (i == 0 or txt[i-1] in ",:[ \t\n{("):
+                    out.append('"'); i += 1
+                    while i < len(txt) and txt[i] != "'":
+                        if txt[i] == '"': out.append('\\"')
+                        else: out.append(txt[i])
+                        i += 1
+                    out.append('"'); i += 1
+                else:
+                    out.append(txt[i]); i += 1
+            return "".join(out)
+        s = _fq(s)
+        s = _re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', s)
+        s = _re.sub(r',\s*([}\]])', r'\1', s)
+        idx = s.find("{")
+        if idx == -1: raise ValueError("No JSON")
+        result = _json.loads(s[idx:])
+        result.setdefault("level", level)
+        result.setdefault("mods", [])
+        import time as _t2
+        _tuning_cache[cache_key] = (_t2.time(), result)
+        if len(_tuning_cache) > 500:
+            oldest = min(_tuning_cache, key=lambda k: _tuning_cache[k][0])
+            del _tuning_cache[oldest]
+        return result
+    except Exception as e:
+        return {"error": str(e), "level": level, "mods": []}
+
+
 def get_tuning_info(car: dict, lang: str = "fi") -> dict:
     """
     Get car-specific tuning information using AI + web search context.

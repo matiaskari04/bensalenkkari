@@ -639,7 +639,9 @@ input,select{font-family:inherit}
     <h2 id="tuning-title">Viritysopas</h2>
   </div>
   <div class="tuning-tabs">
-    <div class="tuning-tab active" id="ttab-perf" onclick="setTuningTab('perf')">Viritys</div>
+    <div class="tuning-tab active" id="ttab-s1" onclick="setTuningTab('s1')">S1</div>
+    <div class="tuning-tab" id="ttab-s2" onclick="setTuningTab('s2')">S2</div>
+    <div class="tuning-tab" id="ttab-s3" onclick="setTuningTab('s3')">S3</div>
     <div class="tuning-tab" id="ttab-cosm" onclick="setTuningTab('cosm')">Kosmetiikka</div>
   </div>
   <div class="tuning-body" id="tuning-body">
@@ -1758,16 +1760,19 @@ if ('serviceWorker' in navigator) {
 // ── Tuning ────────────────────────────────────────────────────
 var tuningCar = null;
 var tuningData = null;
-var activeTuningTab = 'perf';
+var activeTuningTab = 's1';
+var tuningLevels = {};
 
 function setTuningTab(tab) {
   activeTuningTab = tab;
-  document.getElementById('ttab-perf').classList.toggle('active', tab === 'perf');
-  document.getElementById('ttab-cosm').classList.toggle('active', tab === 'cosm');
-  if (tuningData) {
-    if (tab === 'perf') renderTuning(tuningData);
-    else renderCosmetics(tuningData);
-  }
+  ['s1','s2','s3','cosm'].forEach(function(t){
+    var el=document.getElementById('ttab-'+t);
+    if(el) el.classList.toggle('active', t===tab);
+  });
+  if (tab === 'cosm') { if (tuningData) renderCosmetics(tuningData); return; }
+  var levelNum = parseInt(tab.replace('s',''));
+  if (tuningLevels[tab]) { renderSingleLevel(tuningLevels[tab], levelNum-1); }
+  else { loadTuningLevel(levelNum); }
 }
 
 var COSM_ICONS = {
@@ -1823,6 +1828,54 @@ function renderCosmetics(data) {
   }).join('');
 }
 
+function loadTuningLevel(level) {
+  var body = document.getElementById('tuning-body');
+  body.innerHTML = '<div class="tuning-loading"><div class="tuning-spinner"></div>'
+    +(LANG==='fi'?'Ladataan Stage '+level+'...':'Loading Stage '+level+'...')+'</div>';
+  var stockHp = tuningData && tuningData.stock_hp || 0;
+  var stockTq = tuningData && tuningData.stock_torque || 0;
+  var ckey = 'tl:v1:'+(tuningCar?(tuningCar.vin||tuningCar.make||''):'')+':s'+level+':'+LANG;
+  try {
+    var c = localStorage.getItem(ckey);
+    if (c) {
+      var p = JSON.parse(c);
+      if (p.ts && Date.now()-p.ts < 86400000) {
+        tuningLevels['s'+level] = p.data;
+        renderSingleLevel(p.data, level-1);
+        return;
+      }
+    }
+  } catch(e) {}
+  api('/api/tuning-level', {car:tuningCar, level:level, lang:LANG, stock_hp:stockHp, stock_torque:stockTq})
+    .then(function(data) {
+      tuningLevels['s'+level] = data;
+      try { localStorage.setItem(ckey, JSON.stringify({ts:Date.now(),data:data})); } catch(e) {}
+      renderSingleLevel(data, level-1);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty">Error: '+e.message+'</div>';
+    });
+}
+
+function renderSingleLevel(lv, idx) {
+  var LV_CLASS = ['lv1','lv2','lv3'];
+  var lvc = LV_CLASS[idx]||'lv1';
+  var body = document.getElementById('tuning-body');
+  if (!lv || lv.error) { body.innerHTML = '<div class="empty">'+(lv&&lv.error?lv.error:'Error')+'</div>'; return; }
+  var html = '<div class="tuning-level"><div class="level-header '+lvc+'">'
+    +'<div class="level-badge">S'+(lv.level||idx+1)+'</div>'
+    +'<div class="level-info"><div class="level-name">'+(lv.name||'Stage '+(idx+1))+'</div>'
+    +'<div class="level-desc">'+(lv.description||'')+'</div></div>'
+    +'<div class="level-stats">'
+    +(lv.total_hp?'<div class="level-hp">'+lv.total_hp+' hp</div>':'')
+    +(lv.total_cost_eur?'<div class="level-cost">~€'+lv.total_cost_eur.toLocaleString()+'</div>':'')
+    +'</div></div>';
+  ensureArray(lv.mods).forEach(function(mod) { html += renderMod(mod); });
+  html += '</div>';
+  body.innerHTML = html;
+  haptic('success');
+}
+
 function openTuningByVin(vin) {
   var cars = getCars();
   var car = cars.find(function(c){ return c.vin === vin; }) || currentCar || {};
@@ -1838,9 +1891,8 @@ function openTuning(car) {
   var body  = document.getElementById('tuning-body');
   title.textContent = (car.make||'') + ' ' + (car.model||'') + ' ' + (car.year||'');
   body.innerHTML = '<div class="tuning-loading"><div class="tuning-spinner"></div>' + (LANG==='fi'?'Haetaan viritystietoja...':'Fetching tuning data...') + '</div>';
-  activeTuningTab = 'perf';
-  document.getElementById('ttab-perf').classList.add('active');
-  document.getElementById('ttab-cosm').classList.remove('active');
+  activeTuningTab = 's1';
+  ['s1','s2','s3','cosm'].forEach(function(t){var el=document.getElementById('ttab-'+t);if(el)el.classList.toggle('active',t==='s1');});
   tuningData = null;
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -1863,8 +1915,8 @@ function openTuning(car) {
 
   if (_cached) {
     tuningData = _cached;
-    if (activeTuningTab === 'cosm') renderCosmetics(_cached);
-    else renderTuning(_cached);
+      tuningData = _cached;
+      loadTuningLevel(1);
   } else {
     api('/api/tuning', {car: car, lang: LANG})
       .then(function(data) {
@@ -1872,8 +1924,8 @@ function openTuning(car) {
           try { localStorage.setItem(_cacheKey, JSON.stringify({ts: Date.now(), data: data})); } catch(e) {}
         }
         tuningData = data;
-        if (activeTuningTab === 'cosm') renderCosmetics(data);
-        else renderTuning(data);
+        tuningData = data;
+        loadTuningLevel(1);
       })
       .catch(function(e) {
         body.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';

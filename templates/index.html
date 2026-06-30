@@ -27,8 +27,11 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16.5px;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);color:var(--text);font-family:'Nunito',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden;position:relative}
-.bg-scene{position:fixed;inset:0;z-index:-1;width:100%;height:100%;object-fit:cover;opacity:.55}
-.bg-scrim{position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(10,10,12,.55) 0%,rgba(10,10,12,.82) 45%,rgba(10,10,12,.96) 100%)}
+.bg-scene{position:fixed;inset:0;z-index:-3;width:100%;height:100%;object-fit:cover;opacity:.55}
+.bg-photo{position:fixed;inset:0;z-index:-2;background-size:cover;background-position:center;opacity:0;transition:opacity 1.2s ease}
+.bg-photo.loaded{opacity:.5}
+.bg-scrim{position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(10,10,12,.62) 0%,rgba(10,10,12,.85) 45%,rgba(10,10,12,.97) 100%)}
+.bg-credit{position:fixed;bottom:6px;right:10px;z-index:-1;font-size:9px;color:rgba(160,160,170,.35);font-family:'Nunito',sans-serif;pointer-events:none}
 .block,.car-card,.part-block,.pn-block,.tuning-stock,.mod-card,.cosm-card,.tuning-modal,.car-result{backdrop-filter:blur(14px) saturate(1.1);-webkit-backdrop-filter:blur(14px) saturate(1.1)}
 
 a{color:var(--amber);text-decoration:none}
@@ -443,7 +446,9 @@ input,select{font-family:inherit}
 
 <rect width="1200" height="900" fill="url(#vignette)"/>
 </svg>
+<div class="bg-photo" id="bg-photo" aria-hidden="true"></div>
 <div class="bg-scrim" aria-hidden="true"></div>
+<div class="bg-credit" id="bg-credit" aria-hidden="true"></div>
 <div class="app">
 
 <header class="hdr">
@@ -1499,7 +1504,7 @@ function runSearch(part) {
   document.getElementById('btn-search').disabled = true;
 
   // Step 1: get part info (check 7-day localStorage cache first)
-  var _piKey = 'pi:v1:' + (currentCar ? (currentCar.vin||currentCar.make+currentCar.model) : '') + ':' + part.toLowerCase().trim();
+  var _piKey = 'pi:v2:' + (currentCar ? (currentCar.vin||currentCar.make+currentCar.model) : '') + ':' + LANG + ':' + part.toLowerCase().trim();
   var _piCached = null;
   try {
     var _piRaw = localStorage.getItem(_piKey);
@@ -1513,7 +1518,7 @@ function runSearch(part) {
     }
   } catch(e) {}
 
-  (_piCached ? Promise.resolve(_piCached) : api('/api/part-info', {part: part, car: currentCar}).then(function(info){
+  (_piCached ? Promise.resolve(_piCached) : api('/api/part-info', {part: part, car: currentCar, lang: LANG}).then(function(info){
       try { localStorage.setItem(_piKey, JSON.stringify({ts: Date.now(), data: info})); } catch(e) {}
       return info;
     }))
@@ -2231,6 +2236,36 @@ function renderMod(mod) {
     +'</button></div>';
 }
 
+
+// ── Hourly rotating background photo ─────────────────────────
+// Real vintage car/garage photography, free to use under the Unsplash License.
+var BG_PHOTOS = [
+  { url: 'https://images.unsplash.com/photo-1741085119770-76054898ead2', credit: 'Haberdoedas / Unsplash' },
+  { url: 'https://images.unsplash.com/photo-1591278169757-deac26e49555', credit: 'Egor Vikhrev / Unsplash' },
+  { url: 'https://images.unsplash.com/photo-1695580401584-5add1b53a851', credit: 'David Valentine / Unsplash' },
+  { url: 'https://images.unsplash.com/photo-1750712344751-9161bb793b0f', credit: 'Luke Miller / Unsplash' },
+];
+
+function applyHourlyBackground() {
+  var hourIndex = Math.floor(Date.now() / 3600000) % BG_PHOTOS.length;
+  var photo = BG_PHOTOS[hourIndex];
+  var layer = document.getElementById('bg-photo');
+  var creditEl = document.getElementById('bg-credit');
+  if (!layer) return;
+  var sizedUrl = photo.url + '?w=1600&q=70&fm=jpg&fit=crop&auto=format';
+  // Preload before swapping in, so we never flash a half-loaded image
+  var img = new Image();
+  img.onload = function() {
+    layer.style.backgroundImage = "url('" + sizedUrl + "')";
+    layer.classList.add('loaded');
+  };
+  img.src = sizedUrl;
+  if (creditEl) creditEl.textContent = photo.credit;
+}
+
+applyHourlyBackground();
+// Re-check periodically in case the tab stays open across an hour boundary
+setInterval(applyHourlyBackground, 5 * 60 * 1000);
 
 // ── Init ───────────────────────────────────────────────────────
 applyLang();

@@ -127,11 +127,12 @@ def api_part_info():
     data = request.json or {}
     part  = (data.get("part") or "").strip()
     car   = data.get("car") or {}
+    lang  = data.get("lang", "fi")
     country = (car.get("country") or data.get("country") or "FI").upper()
     if not part or not car:
         return jsonify({"error": "part and car required"}), 400
     try:
-        info = get_part_info(part, car)
+        info = get_part_info(part, car, lang=lang)
         add_recent_part(car.get("vin",""), part)
         return jsonify(info)
     except Exception as e:

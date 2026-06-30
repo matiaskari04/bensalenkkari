@@ -177,6 +177,8 @@ COHERE_MODEL      = "command-r"
 COHERE_URL        = "https://api.cohere.com/v2/chat"
 _tuning_cache = {}
 TUNING_CACHE_TTL = 86400
+_part_info_cache = {}
+PART_INFO_CACHE_TTL = 7 * 86400  # 7 days — part numbers/guides don't change
 GEMINI_URL        = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 # Models
@@ -957,7 +959,7 @@ def _normalise_part_numbers(raw: list) -> list:
     return [p for p in result if p["number"]]
 
 
-def get_part_info(part: str, car: dict) -> dict:
+def get_part_info(part: str, car: dict, lang: str = "fi") -> dict:
     year   = car.get("year", "")
     make   = car.get("make", "")
     model  = car.get("model", "")
@@ -969,6 +971,14 @@ def get_part_info(part: str, car: dict) -> dict:
     car_str = f"{year} {make} {model} {engine}".strip()
     vin_line = f"VIN: {vin}" if vin else ""
     extra = " | ".join(filter(None, [fuel, body]))
+
+    # Check cache first — part numbers and guides rarely change (7 day TTL)
+    import time as _pic_t
+    _pic_key = f"{car_str.lower()}::{part.lower().strip()}::{lang}"
+    _pic_hit = _part_info_cache.get(_pic_key)
+    if _pic_hit and (_pic_t.time() - _pic_hit[0]) < PART_INFO_CACHE_TTL:
+        print(f"  {Fore.GREEN}✓ [part-info cache hit] {part}{Style.RESET_ALL}")
+        return _pic_hit[1]
 
     # Run 7zap scrape + web search in parallel for speed
     import concurrent.futures
@@ -999,39 +1009,22 @@ def get_part_info(part: str, car: dict) -> dict:
     if all_found:
         zap_hint = f"\nWeb search and catalog found these OEM part numbers: {', '.join(all_found[:6])}\nUse these as the basis for part_numbers — verify which are genuine OEM vs aftermarket."
 
-    system = "You are an automotive parts specialist. You respond with valid JSON only. No markdown, no explanation. Just a raw JSON object starting with { and ending with }. Write description, replacement_summary and oem_note in Finnish (suomeksi). All other fields stay in English."
+    text_lang = "Finnish" if lang == "fi" else "English"
+    system = f"Automotive parts specialist. Valid JSON only, no markdown, no preamble. Write description, replacement_summary and oem_note in {text_lang} ONLY — zero mixing with other languages. Brand/part names and type/quality enum values stay in their standard form."
 
     prompt = f"""Vehicle: {car_str}
 {vin_line}
 Part: {part}{zap_hint}
 
-Known example for reference: Saab 9-5 YS3E 2.3T front lower ball joint = OEM 5084871 / GM 90537406 / Moog ES80537.
+JSON structure:
+{{"canonical_name":"str","part_numbers":[{{"number":"str","brand":"str","type":"OEM|Aftermarket","quality":"Genuine OEM|OEM equivalent|Premium|Good|Budget"}}],"oem_note":"str","description":"str","replacement_summary":"str","difficulty":"Easy|Medium|Hard","tools_needed":["str"],"avg_labor_hours":"str","search_keywords":"comma,separated"}}
 
-Respond with this exact JSON structure:
-{{
-  "canonical_name": "Front Lower Left Ball Joint",
-  "part_numbers": [
-    {{"number": "5084871", "brand": "Saab", "type": "OEM", "quality": "Genuine OEM"}},
-    {{"number": "90537406", "brand": "GM", "type": "OEM", "quality": "OEM equivalent"}},
-    {{"number": "ES80537", "brand": "Moog", "type": "Aftermarket", "quality": "Premium"}},
-    {{"number": "11025", "brand": "Febi Bilstein", "type": "Aftermarket", "quality": "Good"}},
-    {{"number": "SB-8019", "brand": "TRW", "type": "Aftermarket", "quality": "Premium"}}
-  ],
-  "oem_note": "5084871/90537406 are genuine OEM. Moog and TRW are premium aftermarket. Febi is a good budget option.",
-  "description": "Connects the control arm to the steering knuckle. Fails due to wear in the ball socket causing play and clunking.",
-  "replacement_summary": "1. Safety first: engage parking brake, chock wheels, wear eye protection.\n2. Loosen wheel nuts while on ground.\n3. Jack up vehicle and support on axle stands at chassis jacking points.\n4. Remove wheel.\n5. [detailed steps specific to this part and car]\n...continue with all steps including torque specs",
-  "difficulty": "Medium",
-  "tools_needed": ["Ball joint press", "Torque wrench", "Floor jack", "Axle stands"],
-  "avg_labor_hours": "1.5-2 hours",
-  "search_keywords": "5084871,90537406,ES80537,11025"
-}}
+Rules:
+- part_numbers: 4-6 entries, genuine OEM first then quality aftermarket (Moog/TRW/Lemforder/SKF=Premium, Febi/Meyle/Delphi=Good). Only confident numbers.
+- replacement_summary: numbered steps (1. 2. 3.) a beginner can follow. Include torque values in Nm, key safety steps, common mistakes, whether alignment is needed after. 6-8 steps, concise but complete.
+- All text in {text_lang} except brand/part names and the type/quality enum values."""
 
-Fill in the actual values for: {car_str} — {part}
-For part_numbers: include ALL numbers you know — genuine OEM first, then quality aftermarket. For each entry include a "quality" field: "Genuine OEM", "OEM equivalent", "Premium" (Moog, TRW, Lemförder, SKF, Sachs, Monroe, Bosch, NGK, Gates), "Good" (Febi, Meyle, Delphi, FAG), or "Budget". Aim for 4-8 entries total.
-For replacement_summary: write a THOROUGH guide a beginner can follow. Include safety precautions, specific torque values in Nm (not ft-lbs), common mistakes to avoid, whether alignment is needed after, and any model-specific tips for this exact car. Minimum 10 detailed steps.
-Only include part numbers you are reasonably confident about."""
-
-    raw = claude(prompt, system=system, max_tokens=2000)
+    raw = claude(prompt, system=system, max_tokens=1300)
     try:
         # Strip markdown code fences and leading/trailing text
         clean = re.sub(r"```json|```", "", raw).strip()
@@ -1068,6 +1061,11 @@ Only include part numbers you are reasonably confident about."""
         result.setdefault("search_keywords", part)
         # Normalise part_numbers — may be list of strings OR list of dicts
         result["part_numbers"] = _normalise_part_numbers(result["part_numbers"])
+        # Cache successful result for 7 days
+        _part_info_cache[_pic_key] = (_pic_t.time(), result)
+        if len(_part_info_cache) > 1000:
+            oldest = min(_part_info_cache, key=lambda k: _part_info_cache[k][0])
+            del _part_info_cache[oldest]
         return result
     except Exception as parse_err:
         if os.environ.get("AUTOHELPER_DEBUG"):
@@ -1740,104 +1738,45 @@ def get_tuning_info(car: dict, lang: str = "fi") -> dict:
         return _hit[1]
 
 
-    # Step 1: Search for REAL stock specs first
+    # Search for real stock specs (single query — cheap and the main thing we need accurate)
     spec_context = ""
     if SERPER_API_KEY:
         try:
-            spec_queries = [
-                f"{year} {make} {model} {engine} horsepower torque specs",
-                f"{make} {model} {engine} stock power output specifications",
-            ]
-            spec_snippets = []
-            for q in spec_queries:
-                r = requests.post(
-                    "https://google.serper.dev/search",
-                    headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
-                    json={"q": q, "num": 5},
-                    timeout=10,
-                )
-                if r.status_code == 200:
-                    data = r.json()
-                    # Also check answer box and knowledge graph for specs
-                    if data.get("answerBox"):
-                        spec_snippets.append(str(data["answerBox"])[:300])
-                    for item in data.get("organic", [])[:3]:
-                        spec_snippets.append(item.get("snippet", ""))
-            if spec_snippets:
-                spec_context = "Real stock specs from web:\n" + "\n".join(spec_snippets[:5])
+            r = requests.post(
+                "https://google.serper.dev/search",
+                headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
+                json={"q": f"{year} {make} {model} {engine} horsepower torque specs", "num": 5},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                snippets = []
+                if data.get("answerBox"):
+                    snippets.append(str(data["answerBox"])[:200])
+                for item in data.get("organic", [])[:3]:
+                    snippets.append((item.get("snippet", "") or "")[:150])
+                if snippets:
+                    spec_context = "Stock specs from web: " + " | ".join(snippets)
         except Exception:
             pass
-
-    # Step 2: Search for real tuning data
-    tune_context = ""
-    if SERPER_API_KEY:
-        try:
-            tune_queries = [
-                f"{make} {model} {engine} ECU remap stage 1 hp gain realistic",
-                f"{make} {model} tuning modifications realistic power gains",
-            ]
-            tune_snippets = []
-            for q in tune_queries:
-                r = requests.post(
-                    "https://google.serper.dev/search",
-                    headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
-                    json={"q": q, "num": 4},
-                    timeout=10,
-                )
-                if r.status_code == 200:
-                    for item in r.json().get("organic", [])[:3]:
-                        tune_snippets.append(item.get("snippet", ""))
-            if tune_snippets:
-                tune_context = "Real tuning data from web:\n" + "\n".join(tune_snippets[:4])
-        except Exception:
-            pass
-
-    search_context = spec_context + ("\n\n" if spec_context and tune_context else "") + tune_context
 
     lang_instruction = (
-        "Write ALL text fields in FINNISH only. Zero English anywhere in text fields."
-        if lang == "fi" else
-        "Write ALL text fields in ENGLISH only. Zero Finnish anywhere in text fields."
+        "ALL text fields in FINNISH only." if lang == "fi" else "ALL text fields in ENGLISH only."
     )
-    system = (
-        "You are an automotive tuning expert. Respond with valid JSON only. No markdown. "
-        "Be conservative and realistic — do not exaggerate power gains. "
-        + lang_instruction
-    )
+    system = f"Automotive expert. Valid JSON only, no markdown. {lang_instruction}"
 
+    # NOTE: tuning "levels" (S1/S2/S3 mods) are fetched separately on-demand via
+    # get_tuning_level() when the user clicks each tab — keeps this initial call cheap.
     prompt = (
-        f"Car: {car_str}\n"
-        f"{search_context}\n\n"
-        "TASK: Return tuning and cosmetics data for this exact car.\n\n"
-        "CRITICAL: Use the REAL stock specs from the web data above. Do not guess or invent specs.\n"
-        "CRITICAL: Be REALISTIC and CONSERVATIVE with power gains:\n"
-        "  - A Stage 1 remap on a naturally aspirated engine gives 5-15 hp MAX, often less.\n"
-        "  - A Stage 1 remap on a turbo engine gives 15-40 hp depending on the engine.\n"
-        "  - Do not claim 50+ hp from a simple remap unless the web data confirms it.\n"
-        "  - hp_gain is the gain from THAT MOD ALONE, not cumulative total.\n"
-        "  - total_hp in each level = stock_hp + sum of all hp_gains in that level + previous levels.\n"
-        "CRITICAL: All text fields must be in language: " + lang + " ONLY.\n\n"
-        "JSON structure:\n"
-        "{ \"stock_hp\": int, \"stock_torque\": int, \"summary\": \"string\",\n"
-        "  \"cosmetics\": [ { \"name\": \"str\", \"category\": \"str\", \"description\": \"str\","
-        " \"price_eur\": int, \"price_range\": \"str\", \"worth_score\": int, \"effect\": \"str\", \"popular_brands\": [] } ],\n"
-        "  \"levels\": [ { \"level\": 1, \"name\": \"str\", \"description\": \"str\","
-        " \"total_hp\": int, \"total_torque\": int, \"total_cost_eur\": int,\n"
-        "    \"mods\": [ { \"name\": \"str\", \"category\": \"str\", \"description\": \"str\","
-        " \"hp_gain\": int, \"torque_gain\": int,\n"
-        "      \"price_eur\": int, \"price_range\": \"str\", \"difficulty\": \"str\","
-        " \"reversible\": bool, \"worth_score\": int, \"notes\": \"str\",\n"
-        "      \"requires\": [], \"effects\": { \"power_hp\": int, \"torque_nm\": int,"
-        " \"handling\": int, \"fuel_l100km\": float, \"reliability\": int, \"daily_usability\": int } } ] } ] }\n\n"
-        "REQUIRED: Return EXACTLY 3 levels in the levels array. Every level must have mods.\n"
-        "Stage 1 (bolt-on): remap, sport air filter, exhaust. 2-3 mods.\n"
-        "Stage 2 (hardware): downpipe, intercooler, sport suspension, brakes. 2-3 mods.\n"
-        "Stage 3 (major): turbo upgrade, fueling, internals, or advanced chassis. 2-3 mods even if modest.\n"
-        "worth_score 1-5 realistic. Prices EUR Finnish market.\n"
+        f"Car: {car_str}\n{spec_context}\n\n"
+        '{"stock_hp":int,"stock_torque":int,"summary":"1-2 sentence tuning potential overview",'
+        '"cosmetics":[{"name":"str","category":"str","description":"str","price_eur":int,'
+        '"price_range":"str","worth_score":int,"effect":"str","popular_brands":[]}]}\n\n'
+        "Use REAL stock specs from web data if given, else best estimate. "
+        "6-8 cosmetics: wheels, lowering, tint, body kit, wrap, LEDs, interior, exhaust tip. "
+        f"All text in {lang} only."
     )
-    print(f"  [tuning] calling AI, GROQ_KEY={'set' if GROQ_API_KEY else 'MISSING'}, GEMINI_KEY={'set' if GEMINI_API_KEY else 'MISSING'}")
-    raw = claude(prompt, system=system, max_tokens=2500)
-    print(f"  [tuning] raw response start: {repr(raw[:150])}")
+    raw = claude(prompt, system=system, max_tokens=700)
     # Check for API errors before parsing
     if raw.startswith("[AI error:") or raw.startswith("[GROQ") or raw.startswith("[GEMINI"):
         is_rate_limit = "429" in raw or "rate limit" in raw.lower() or "Too Many" in raw

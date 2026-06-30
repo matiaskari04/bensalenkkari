@@ -1,5 +1,5 @@
 // Bensalenkkari Service Worker
-const CACHE = 'bensalenkkari-v3';
+const CACHE = 'bensalenkkari-v4';
 
 // Assets to cache on install for offline use
 const PRECACHE = [

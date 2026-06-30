@@ -166,6 +166,9 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY", "")
 GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL      = "gemini-2.0-flash"
+MISTRAL_API_KEY   = os.environ.get("MISTRAL_API_KEY", "")
+MISTRAL_MODEL     = "mistral-small-latest"
+MISTRAL_URL       = "https://api.mistral.ai/v1/chat/completions"
 _tuning_cache = {}
 TUNING_CACHE_TTL = 86400
 GEMINI_URL        = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
@@ -262,6 +265,33 @@ def _call_gemini(prompt: str, system: str, max_tokens: int) -> str:
             raise Exception(f"Gemini connection failed: {e}")
 
 
+def _call_mistral(prompt: str, system: str, max_tokens: int) -> str:
+    if not MISTRAL_API_KEY:
+        raise Exception("MISTRAL_API_KEY not set")
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    for attempt in range(3):
+        try:
+            r = requests.post(
+                MISTRAL_URL,
+                headers={"Authorization": f"Bearer {MISTRAL_API_KEY}", "Content-Type": "application/json"},
+                json={"model": MISTRAL_MODEL, "messages": messages, "max_tokens": max_tokens, "temperature": 0.3},
+                timeout=45,
+            )
+            if r.status_code == 429:
+                raise Exception(f"429 Rate limit: {r.text[:100]}")
+            if not r.ok:
+                raise Exception(f"{r.status_code} {r.reason}: {r.text[:200]}")
+            return r.json()["choices"][0]["message"]["content"].strip()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+            raise Exception(f"Mistral connection failed: {e}")
+
+
 def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
     """
     Call the configured AI provider with automatic fallback.
@@ -273,11 +303,13 @@ def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
             (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic"),
             (_call_groq,      GROQ_API_KEY,      "Groq"),
             (_call_gemini,    GEMINI_API_KEY,    "Gemini"),
+            (_call_mistral,   MISTRAL_API_KEY,   "Mistral"),
         ]
     else:
         chain = [
             (_call_groq,      GROQ_API_KEY,      "Groq"),
             (_call_gemini,    GEMINI_API_KEY,    "Gemini"),
+            (_call_mistral,   MISTRAL_API_KEY,   "Mistral"),
             (_call_anthropic, ANTHROPIC_API_KEY, "Anthropic"),
         ]
 
@@ -293,7 +325,7 @@ def ai(prompt: str, system: str = "", max_tokens: int = 1200) -> str:
             print(f"  {Fore.YELLOW}⚠  {name} failed ({str(err)[:60]}) — trying next provider...{Style.RESET_ALL}")
             continue
 
-    providers_tried = [name for fn, key, name in chain if key]
+    providers_tried = [name for fn, key, name in chain if key]  # all tried
     return f"[AI error: tried {', '.join(providers_tried)}. Last error: {last_err}]"
 
 

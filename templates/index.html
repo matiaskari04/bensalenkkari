@@ -3,34 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="theme-color" content="#0f0f0f">
+<meta name="theme-color" content="#0a0a0c">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bensalenkkari">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.svg">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" type="image/png" href="/icon-192.png">
 <title>Bensalenkkari</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
+  --bg:#0a0a0c; --surface:rgba(26,26,30,.88); --surface2:rgba(36,36,42,.92); --border:#2c2c33;
   --amber:#f59e0b; --amber-dim:#b45309; --amber-glow:rgba(245,158,11,.12);
-  --text:#f0f0f0; --text2:#a0a0a0; --text3:#666;
+  --text:#f2f2f3; --text2:#a3a3ab; --text3:#6b6b74;
   --green:#22c55e; --red:#ef4444;
-  --r:14px; --rs:8px;
+  --r:16px; --rs:10px;
+}
+@supports(backdrop-filter:blur(1px)){
+  :root{--surface:rgba(24,24,28,.72); --surface2:rgba(34,34,40,.78)}
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16.5px;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--text);font-family:'Nunito',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',system-ui,sans-serif;min-height:100dvh;overflow-x:hidden;position:relative}
+.bg-scene{position:fixed;inset:0;z-index:-1;width:100%;height:100%;object-fit:cover;opacity:.55}
+.bg-scrim{position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(10,10,12,.55) 0%,rgba(10,10,12,.82) 45%,rgba(10,10,12,.96) 100%)}
+.block,.car-card,.part-block,.pn-block,.tuning-stock,.mod-card,.cosm-card,.tuning-modal,.car-result{backdrop-filter:blur(14px) saturate(1.1);-webkit-backdrop-filter:blur(14px) saturate(1.1)}
+
 a{color:var(--amber);text-decoration:none}
 button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
 input,select{font-family:inherit}
-.app{max-width:600px;margin:0 auto;padding-bottom:80px}
+.app{max-width:600px;margin:0 auto;padding-bottom:80px;animation:fadeIn .4s ease}
 
 /* Header */
-.hdr{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px}
-.logo-text{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--amber)}
+.hdr{position:sticky;top:0;z-index:100;background:rgba(10,10,12,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px}
+.logo-text{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;color:var(--amber);letter-spacing:.2px}
 .logo-sub{font-size:11px;color:var(--text3);margin-top:-2px}
 .lang-btn{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:6px 12px;font-size:13px;color:var(--text2);font-weight:500}
 
@@ -41,8 +49,9 @@ input,select{font-family:inherit}
 /* Cards scroll */
 .cars-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
 .cars-scroll::-webkit-scrollbar{display:none}
-.car-card{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;min-width:160px;cursor:pointer;transition:border-color .15s;position:relative}
-.car-card:hover,.car-card:active{border-color:var(--amber);background:var(--amber-glow)}
+.car-card{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;min-width:168px;cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s;position:relative}
+.car-card:hover{border-color:var(--amber-dim);transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.car-card:active{transform:translateY(0) scale(.98)}
 .car-card-name{font-size:14px;font-weight:700}
 .car-card-detail{font-size:13px;color:var(--text2);margin-top:3px}
 .car-card-parts{font-size:11px;color:var(--text3);margin-top:4px}
@@ -53,12 +62,13 @@ input,select{font-family:inherit}
 .empty-cars{color:var(--text3);font-size:13px;padding:8px 0}
 
 /* Block */
-.block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.28)}
 
 /* Toggle */
 .mode-toggle{display:flex;gap:8px;margin-bottom:14px}
-.toggle-btn{flex:1;padding:8px 14px;border-radius:var(--rs);font-size:13px;font-weight:500;color:var(--text3);background:var(--surface2);border:1px solid var(--border);transition:all .15s}
-.toggle-btn.active{background:var(--amber-glow);border-color:var(--amber);color:var(--amber)}
+.toggle-btn{flex:1;padding:9px 14px;border-radius:var(--rs);font-size:13px;font-weight:600;color:var(--text3);background:var(--surface2);border:1px solid var(--border);transition:all .15s}
+.toggle-btn.active{background:var(--amber-glow);border-color:var(--amber);color:var(--amber);box-shadow:0 0 0 1px rgba(245,158,11,.15)}
+.toggle-btn:active{transform:scale(.97)}
 
 /* Inputs */
 .row{display:flex;gap:10px;margin-bottom:12px}
@@ -70,12 +80,12 @@ input,select{font-family:inherit}
 .field select option{background:var(--surface2)}
 
 /* Buttons */
-.btn-primary{width:100%;background:var(--amber);color:#000;font-size:15px;font-weight:600;padding:13px;border-radius:var(--rs);transition:opacity .15s}
-.btn-primary:active{opacity:.85}
+.btn-primary{width:100%;background:linear-gradient(180deg,#fbbf24,var(--amber));color:#1a1305;font-size:15px;font-weight:700;padding:13px;border-radius:var(--rs);transition:transform .12s,box-shadow .12s;box-shadow:0 4px 16px rgba(245,158,11,.22),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn-primary:active{transform:scale(.985);box-shadow:0 2px 8px rgba(245,158,11,.18)}
 .btn-primary:disabled{opacity:.5;cursor:not-allowed}
 
 /* Car result */
-.car-result{background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:16px 18px;display:none}
+.car-result{background:var(--surface);border:1px solid var(--amber-dim);border-radius:var(--r);padding:18px 20px;display:none;box-shadow:0 0 0 1px rgba(245,158,11,.08),0 8px 28px rgba(0,0,0,.35)}
 .car-result.show{display:block}
 .car-result-name{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700}
 .car-result-detail{font-size:13px;color:var(--text2);margin-top:4px}
@@ -88,13 +98,14 @@ input,select{font-family:inherit}
 .badge-low{background:rgba(239,68,68,.15);color:var(--red)}
 
 /* Part search */
-.part-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;display:none}
+.part-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.28)}
 .part-block.show{display:block}
 .part-row{display:flex;gap:10px}
 .part-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:15px;padding:11px 14px;outline:none;transition:border-color .15s}
 .part-row input:focus{border-color:var(--amber)}
 .part-row input::placeholder{color:var(--text3)}
-.btn-search{background:var(--amber);color:#000;font-size:20px;width:48px;height:48px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn-search{background:linear-gradient(180deg,#fbbf24,var(--amber));color:#1a1305;font-size:20px;width:48px;height:48px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(245,158,11,.25);transition:transform .12s}
+.btn-search:active{transform:scale(.92)}
 .clarify{background:rgba(245,158,11,.1);border:1px solid var(--amber-dim);border-radius:var(--rs);padding:12px 14px;font-size:13px;color:var(--amber);margin-top:12px;display:none}
 .clarify.show{display:block}
 .recent-parts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
@@ -128,8 +139,11 @@ input,select{font-family:inherit}
 .meta-chip span{color:var(--text);font-weight:500}
 
 /* Part numbers */
-.pn-block{margin:16px 20px 0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.pn-block{margin:16px 20px 0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .pn-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:600}
+.pn-copyall{font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;display:flex;align-items:center;gap:5px;transition:border-color .15s,color .15s}
+.pn-copyall:hover{border-color:var(--amber);color:var(--amber)}
+.pn-copyall:active{transform:scale(.95)}
 .pn-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
 .pn-row:last-child{border-bottom:none}
 .pn-type{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;flex-shrink:0}
@@ -143,11 +157,12 @@ input,select{font-family:inherit}
 .pn-qual{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(99,102,241,.15);color:#a5b4fc;white-space:nowrap}
 
 /* Tabs */
-.tabs-wrap{position:sticky;top:57px;z-index:90;background:var(--bg);padding:0 20px;border-bottom:1px solid var(--border)}
+.tabs-wrap{position:sticky;top:57px;z-index:90;background:rgba(10,10,12,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:0 20px;border-bottom:1px solid var(--border)}
 .tabs{display:flex;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab-btn{flex-shrink:0;padding:14px 16px;font-size:13px;font-weight:500;color:var(--text3);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap}
+.tab-btn{flex-shrink:0;padding:14px 16px;font-size:13px;font-weight:600;color:var(--text3);border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap;letter-spacing:.2px}
 .tab-btn.active{color:var(--amber);border-bottom-color:var(--amber)}
+.tab-btn:active{opacity:.7}
 .tab-panel{display:none;padding:20px}
 .tab-panel.active{display:block}
 
@@ -220,7 +235,7 @@ input,select{font-family:inherit}
 @media(max-width:380px){.part-img-wrap{width:72px;height:72px}.part-name{font-size:19px}}
 
 /* ── Tuning modal ─────────────────────────────────────────── */
-.tuning-modal{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;background:var(--bg)}
+.tuning-modal{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;background:rgba(10,10,12,.94);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .tuning-modal.open{display:flex}
 .tuning-hdr{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
 .tuning-hdr h2{font-family:"Space Grotesk",sans-serif;font-size:17px;font-weight:700;flex:1;margin:0}
@@ -230,6 +245,7 @@ input,select{font-family:inherit}
 .tuning-tab{flex:1;padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
 .tuning-tab.active{color:var(--amber);border-bottom-color:var(--amber)}
 .tuning-body{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch}
+.tuning-overview{padding:16px 20px 0;flex-shrink:0}
 .tuning-stock{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;display:flex;gap:20px}
 .tuning-stat{text-align:center;flex:1}
 .tuning-stat-val{font-family:"Space Grotesk",sans-serif;font-size:26px;font-weight:700;color:var(--amber)}
@@ -357,43 +373,83 @@ input,select{font-family:inherit}
 </style>
 </head>
 <body>
+<svg class="bg-scene" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<defs>
+  <radialGradient id="lampGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.32"/>
+    <stop offset="45%" stop-color="#f59e0b" stop-opacity="0.10"/>
+    <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="lampGlowSoft" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.5"/>
+    <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="baseFade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#0d0d10"/>
+    <stop offset="55%" stop-color="#08080a"/>
+    <stop offset="100%" stop-color="#050506"/>
+  </linearGradient>
+  <radialGradient id="vignette" cx="50%" cy="38%" r="75%">
+    <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+  </radialGradient>
+</defs>
+
+<rect width="1200" height="900" fill="url(#baseFade)"/>
+
+<g opacity="0.9">
+  <rect x="540" y="0" width="14" height="120" fill="#1c1c1f"/>
+  <ellipse cx="547" cy="120" rx="60" ry="14" fill="#1c1c1f"/>
+  <circle cx="600" cy="160" r="340" fill="url(#lampGlow)"/>
+  <circle cx="600" cy="135" r="70" fill="url(#lampGlowSoft)"/>
+</g>
+
+<g opacity="0.05" stroke="#f5f5f5" stroke-width="2">
+  <path d="M-50 760 Q300 700 650 770 T1300 740" fill="none"/>
+  <path d="M-50 800 Q320 745 700 810 T1300 790" fill="none"/>
+</g>
+
+<g transform="translate(960,760)" opacity="0.07">
+  <circle r="240" fill="none" stroke="#e5e5e5" stroke-width="3"/>
+  <circle r="240" fill="none" stroke="#e5e5e5" stroke-width="34" stroke-dasharray="3 14"/>
+  <circle r="92" fill="none" stroke="#e5e5e5" stroke-width="3"/>
+  <circle r="18" fill="#e5e5e5"/>
+  <g stroke="#e5e5e5" stroke-width="3">
+    <line x1="0" y1="-92" x2="0" y2="92"/>
+    <line x1="-92" y1="0" x2="92" y2="0"/>
+    <line x1="-65" y1="-65" x2="65" y2="65"/>
+    <line x1="65" y1="-65" x2="-65" y2="65"/>
+  </g>
+</g>
+
+<g transform="translate(95,200) rotate(34)" opacity="0.06">
+  <rect x="-14" y="0" width="28" height="260" rx="10" fill="#e5e5e5"/>
+  <path d="M-14 0 Q-14 -54 22 -54 Q58 -54 58 -16 Q58 14 28 14 Q40 -2 28 -16 Q16 -28 0 -16 Q-10 -8 -14 0Z" fill="#e5e5e5"/>
+  <circle cx="0" cy="278" r="26" fill="none" stroke="#e5e5e5" stroke-width="9"/>
+</g>
+
+<g opacity="0.55">
+  <circle cx="180" cy="130" r="3" fill="#fbbf24"/>
+  <circle cx="240" cy="95" r="2" fill="#fbbf24" opacity="0.7"/>
+  <circle cx="980" cy="210" r="2.4" fill="#f5f5f5" opacity="0.5"/>
+  <circle cx="1040" cy="160" r="1.8" fill="#fbbf24" opacity="0.6"/>
+  <circle cx="120" cy="340" r="1.6" fill="#f5f5f5" opacity="0.35"/>
+  <circle cx="860" cy="90" r="1.6" fill="#fbbf24" opacity="0.45"/>
+</g>
+
+<g opacity="0.08" transform="translate(560,840)">
+  <path d="M-180 0 Q-180 -70 -90 -90 L90 -90 Q180 -70 180 0 Z" fill="#e5e5e5"/>
+</g>
+
+<rect width="1200" height="900" fill="url(#vignette)"/>
+</svg>
+<div class="bg-scrim" aria-hidden="true"></div>
 <div class="app">
 
 <header class="hdr">
   <div style="display:flex;align-items:center;gap:12px">
-    <!-- Mechanic logo SVG -->
-    <svg width="52" height="44" viewBox="0 0 52 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- White sedan car body -->
-      <rect x="4" y="26" width="40" height="11" rx="3" fill="#e8e8e8"/>
-      <!-- Car roof/cabin -->
-      <path d="M13 26 Q15 18 22 17 L32 17 Q38 17 40 26Z" fill="#f0f0f0"/>
-      <!-- Windows -->
-      <path d="M16 25 Q17 20 21 19 L26 19 L26 25Z" fill="#a8d4f0" opacity="0.8"/>
-      <path d="M27 25 L27 19 L32 19 Q36 20 37 25Z" fill="#a8d4f0" opacity="0.8"/>
-      <!-- Wheels -->
-      <circle cx="13" cy="37" r="4.5" fill="#333"/>
-      <circle cx="13" cy="37" r="2.5" fill="#888"/>
-      <circle cx="35" cy="37" r="4.5" fill="#333"/>
-      <circle cx="35" cy="37" r="2.5" fill="#888"/>
-      <!-- Door line -->
-      <line x1="26" y1="26" x2="26" y2="36" stroke="#ccc" stroke-width="0.8"/>
-      <!-- Mechanic body -->
-      <rect x="38" y="20" width="10" height="13" rx="3" fill="#f59e0b"/>
-      <!-- Mechanic head -->
-      <circle cx="43" cy="14" r="5.5" fill="#f5c5a3"/>
-      <!-- Hair -->
-      <path d="M38 12 Q39 8 43 8 Q47 8 48 12 Q46 10 43 10 Q40 10 38 12Z" fill="#5c3d1e"/>
-      <!-- Smile -->
-      <path d="M41 16 Q43 18 45 16" stroke="#c0706a" stroke-width="1" fill="none" stroke-linecap="round"/>
-      <!-- Eyes -->
-      <circle cx="41.5" cy="14" r="0.8" fill="#444"/>
-      <circle cx="44.5" cy="14" r="0.8" fill="#444"/>
-      <!-- Wrench -->
-      <rect x="46" y="10" width="2.5" height="11" rx="1.2" fill="#aaa" transform="rotate(30 47 15)"/>
-      <rect x="45" y="8" width="5" height="3" rx="1" fill="#888" transform="rotate(30 47 15)"/>
-      <!-- Mechanic arm on car -->
-      <path d="M38 28 Q36 30 33 30" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
-    </svg>
+    <!-- Bensalenkkari logo -->
+    <img src="/static/logo-full.png" alt="Bensalenkkari" style="height:40px;width:auto;display:block" />
     <div>
       <div class="logo-text">Bensalenkkari</div>
       <div class="logo-sub" id="logo-sub">Varaosahaku</div>
@@ -606,7 +662,10 @@ input,select{font-family:inherit}
   </div>
 
   <div class="pn-block" id="pn-block">
-    <div class="pn-title" id="lbl-partnums">Osanumerot</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="pn-title" id="lbl-partnums" style="margin-bottom:0">Osanumerot</div>
+      <button class="pn-copyall" id="btn-copy-all" onclick="copyAllNums()">⧉ <span id="lbl-copyall">Kopioi kaikki</span></button>
+    </div>
     <div id="pn-list"></div>
   </div>
 
@@ -644,6 +703,7 @@ input,select{font-family:inherit}
     <div class="tuning-tab" id="ttab-s3" onclick="setTuningTab('s3')">S3</div>
     <div class="tuning-tab" id="ttab-cosm" onclick="setTuningTab('cosm')">Kosmetiikka</div>
   </div>
+  <div class="tuning-overview" id="tuning-overview" style="display:none"></div>
   <div class="tuning-body" id="tuning-body">
     <div class="tuning-loading"><div class="tuning-spinner"></div>Haetaan viritystietoja...</div>
   </div>
@@ -664,36 +724,35 @@ input,select{font-family:inherit}
 <script>
 // ── Step icons ───────────────────────────────────────────────
 var STEP_ICONS = {
-  // Safety / setup
-  safety:   '<svg viewBox="0 0 36 36" fill="none"><path d="M18 4L6 9v10c0 7 5.4 13.5 12 15.3C24.6 32.5 30 26 30 19V9L18 4z" fill="#f59e0b" opacity=".18" stroke="#f59e0b" stroke-width="1.5"/><text x="18" y="23" text-anchor="middle" font-size="14" fill="#f59e0b" font-weight="700">!</text></svg>',
-  // Jack / lift
-  lift:     '<svg viewBox="0 0 36 36" fill="none"><rect x="4" y="26" width="28" height="4" rx="2" fill="#888"/><rect x="13" y="10" width="10" height="16" rx="2" fill="#aaa"/><path d="M10 10 L18 4 L26 10" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="7" y="26" width="5" height="5" rx="1" fill="#666"/><rect x="24" y="26" width="5" height="5" rx="1" fill="#666"/></svg>',
-  // Wheel / tyre
-  wheel:    '<svg viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="13" stroke="#aaa" stroke-width="2.5"/><circle cx="18" cy="18" r="5" fill="#888"/><line x1="18" y1="5" x2="18" y2="13" stroke="#aaa" stroke-width="1.5"/><line x1="18" y1="23" x2="18" y2="31" stroke="#aaa" stroke-width="1.5"/><line x1="5" y1="18" x2="13" y2="18" stroke="#aaa" stroke-width="1.5"/><line x1="23" y1="18" x2="31" y2="18" stroke="#aaa" stroke-width="1.5"/></svg>',
-  // Wrench / bolt
-  wrench:   '<svg viewBox="0 0 36 36" fill="none"><path d="M23 5a8 8 0 0 1 1 11l-9 9a3 3 0 0 1-4-4l9-9A8 8 0 0 1 23 5z" fill="#aaa"/><rect x="4" y="24" width="12" height="6" rx="2" fill="#888" transform="rotate(-45 10 27)"/></svg>',
-  // Disconnect / unplug
-  disconnect: '<svg viewBox="0 0 36 36" fill="none"><path d="M8 18 L16 18" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/><path d="M20 18 L28 18" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/><circle cx="16" cy="18" r="3" fill="#ef4444"/><circle cx="20" cy="18" r="3" fill="#ef4444"/><line x1="12" y1="12" x2="24" y2="24" stroke="#ef4444" stroke-width="1.5" opacity=".4"/></svg>',
-  // Torque wrench
-  torque:   '<svg viewBox="0 0 36 36" fill="none"><path d="M8 28 L22 14" stroke="#aaa" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="12" r="5" stroke="#f59e0b" stroke-width="2" fill="none"/><path d="M22 8 L26 8" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/><text x="24" y="14" text-anchor="middle" font-size="6" fill="#f59e0b" font-weight="700">Nm</text></svg>',
-  // Press / push
-  press:    '<svg viewBox="0 0 36 36" fill="none"><rect x="12" y="4" width="12" height="8" rx="2" fill="#888"/><rect x="16" y="12" width="4" height="14" fill="#aaa"/><path d="M10 26 L26 26 L22 32 L14 32 Z" fill="#888"/><path d="M14 20 L8 20 M22 20 L28 20" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/></svg>',
-  // Lubricate / grease
-  lube:     '<svg viewBox="0 0 36 36" fill="none"><path d="M14 6 L14 22 Q14 28 20 28 Q26 28 26 22 L26 16" stroke="#f59e0b" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="26" cy="12" r="4" fill="#f59e0b" opacity=".6"/><path d="M8 18 Q11 14 8 10" stroke="#f59e0b" stroke-width="1.5" fill="none" opacity=".5"/></svg>',
-  // Inspect / check
-  inspect:  '<svg viewBox="0 0 36 36" fill="none"><circle cx="16" cy="16" r="9" stroke="#aaa" stroke-width="2"/><line x1="23" y1="23" x2="30" y2="30" stroke="#aaa" stroke-width="2.5" stroke-linecap="round"/><line x1="12" y1="16" x2="16" y2="20" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="20" x2="21" y2="13" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/></svg>',
-  // Align
-  align:    '<svg viewBox="0 0 36 36" fill="none"><line x1="18" y1="4" x2="18" y2="32" stroke="#aaa" stroke-width="1.5" stroke-dasharray="3,2"/><line x1="4" y1="18" x2="32" y2="18" stroke="#aaa" stroke-width="1.5" stroke-dasharray="3,2"/><circle cx="18" cy="18" r="5" stroke="#f59e0b" stroke-width="2" fill="none"/><circle cx="18" cy="18" r="1.5" fill="#f59e0b"/></svg>',
-  // Clean / wash
-  clean:    '<svg viewBox="0 0 36 36" fill="none"><path d="M8 28 Q18 18 28 28" stroke="#aaa" stroke-width="2" fill="none"/><path d="M10 22 Q12 16 18 12 Q24 16 26 22" stroke="#aaa" stroke-width="1.5" fill="none"/><path d="M14 16 Q16 10 18 8 Q20 10 22 16" stroke="#aaa" stroke-width="1" fill="none"/></svg>',
-  // Install / place
-  install:  '<svg viewBox="0 0 36 36" fill="none"><rect x="10" y="16" width="16" height="12" rx="2" fill="#22c55e" opacity=".2" stroke="#22c55e" stroke-width="1.5"/><path d="M18 4 L18 16" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/><path d="M13 11 L18 16 L23 11" stroke="#22c55e" stroke-width="2" stroke-linecap="round" fill="none"/></svg>',
-  // Reassemble
-  reassemble: '<svg viewBox="0 0 36 36" fill="none"><path d="M18 6 A12 12 0 0 1 30 18" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M30 18 A12 12 0 0 1 6 18" stroke="#aaa" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M6 18 A12 12 0 0 1 14 7" stroke="#f59e0b" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M26 12 L30 18 L24 18" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
-  // Test drive
-  test:     '<svg viewBox="0 0 36 36" fill="none"><path d="M6 22 Q8 14 18 12 Q28 14 30 22" stroke="#aaa" stroke-width="2" fill="none"/><circle cx="11" cy="24" r="4" stroke="#aaa" stroke-width="2" fill="none"/><circle cx="25" cy="24" r="4" stroke="#aaa" stroke-width="2" fill="none"/><path d="M15 24 L21 24" stroke="#aaa" stroke-width="1.5"/><path d="M22 18 L26 14" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/></svg>',
-  // Default tool
-  default:  '<svg viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="12" stroke="#666" stroke-width="1.5" fill="none"/><text x="18" y="23" text-anchor="middle" font-size="14" fill="#888" font-weight="600">✦</text></svg>',
+  safety: '<svg viewBox="0 0 36 36" fill="none"><path d="M18 4.5L7 9.5v9c0 7.2 4.6 13 11 14.9 6.4-1.9 11-7.7 11-14.9v-9L18 4.5z" fill="#f59e0b" opacity=".16" stroke="#f59e0b" stroke-width="1.6" stroke-linejoin="round"/><path d="M18 11v9" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round"/><circle cx="18" cy="24" r="1.4" fill="#f59e0b"/></svg>',
+
+  lift: '<svg viewBox="0 0 36 36" fill="none"><rect x="3" y="28" width="30" height="3" rx="1.5" fill="#8a8f99"/><path d="M9 28 L13 14 L23 14 L27 28" stroke="#9aa0ab" stroke-width="2.2" fill="none" stroke-linejoin="round"/><rect x="15.5" y="6" width="5" height="9" rx="1.5" fill="#aab0bb"/><path d="M11 14 L13.5 9 L22.5 9 L25 14" stroke="#aab0bb" stroke-width="2" fill="none" stroke-linejoin="round"/><circle cx="9" cy="28" r="2.2" fill="#f59e0b"/><circle cx="27" cy="28" r="2.2" fill="#f59e0b"/></svg>',
+
+  wheel: '<svg viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="13" stroke="#9aa0ab" stroke-width="2.4"/><circle cx="18" cy="18" r="13" stroke="#6b7280" stroke-width="2.4" stroke-dasharray="1.2 4.6"/><circle cx="18" cy="18" r="6.5" fill="#7a808a"/><circle cx="18" cy="18" r="2" fill="#cfd3da"/><circle cx="18" cy="11.7" r="1.3" fill="#cfd3da"/><circle cx="23.4" cy="15" r="1.3" fill="#cfd3da"/><circle cx="23.4" cy="21" r="1.3" fill="#cfd3da"/><circle cx="12.6" cy="21" r="1.3" fill="#cfd3da"/><circle cx="12.6" cy="15" r="1.3" fill="#cfd3da"/></svg>',
+
+  wrench: '<svg viewBox="0 0 36 36" fill="none"><path d="M23.5 5.3a7 7 0 0 0-9 8.6L6 22.4a2.6 2.6 0 0 0 3.6 3.6l8.5-8.5a7 7 0 0 0 8.6-9l-3.6 3.6-3-3 3.4-3.4z" fill="#aab0bb" stroke="#7a808a" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8" cy="24" r="1.6" fill="#5a6272"/></svg>',
+
+  disconnect: '<svg viewBox="0 0 36 36" fill="none"><rect x="5" y="15" width="8" height="6" rx="1.5" fill="#aab0bb"/><rect x="23" y="15" width="8" height="6" rx="1.5" fill="#aab0bb"/><path d="M13 18 L16 18" stroke="#ef4444" stroke-width="2.4" stroke-linecap="round"/><path d="M20 18 L23 18" stroke="#ef4444" stroke-width="2.4" stroke-linecap="round"/><path d="M16.5 13 L19.5 23" stroke="#ef4444" stroke-width="2" stroke-linecap="round" opacity=".75"/><circle cx="8" cy="11" r="1.1" fill="#ef4444" opacity=".6"/><circle cx="28" cy="25" r="1.1" fill="#ef4444" opacity=".6"/></svg>',
+
+  torque: '<svg viewBox="0 0 36 36" fill="none"><path d="M6 30 L18 18" stroke="#aab0bb" stroke-width="3" stroke-linecap="round"/><rect x="4" y="27.5" width="6" height="5" rx="1.5" fill="#9aa0ab" transform="rotate(-45 7 30)"/><circle cx="23" cy="13" r="7" stroke="#f59e0b" stroke-width="2" fill="#f59e0b" fill-opacity=".12"/><path d="M23 8.5 L23 13 L26 15" stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round" fill="none"/><text x="23" y="32" text-anchor="middle" font-size="6.5" fill="#f59e0b" font-weight="700">Nm</text></svg>',
+
+  press: '<svg viewBox="0 0 36 36" fill="none"><rect x="9" y="4" width="18" height="6" rx="1.5" fill="#9aa0ab"/><rect x="16" y="10" width="4" height="11" fill="#aab0bb"/><path d="M9 21 L27 21 L23 28 L13 28 Z" fill="#9aa0ab"/><path d="M11 16 L6 16 M25 16 L30 16" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/><path d="M14 28 L14 32 M22 28 L22 32" stroke="#5a6272" stroke-width="2" stroke-linecap="round"/></svg>',
+
+  lube: '<svg viewBox="0 0 36 36" fill="none"><rect x="6" y="14" width="12" height="6" rx="2" fill="#aab0bb"/><path d="M18 17 L26 17" stroke="#8a8f99" stroke-width="2.4" stroke-linecap="round"/><path d="M26 13 L31 17 L26 21 Z" fill="#f59e0b"/><path d="M9 20 Q9 27 13 30" stroke="#f59e0b" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="13.5" cy="31" r="1.4" fill="#f59e0b"/><path d="M4 17 L6 17 M4 14 L6 15.5 M4 20 L6 18.5" stroke="#6b7280" stroke-width="1.3" stroke-linecap="round"/></svg>',
+
+  inspect: '<svg viewBox="0 0 36 36" fill="none"><circle cx="15.5" cy="15.5" r="9" stroke="#aab0bb" stroke-width="2.2"/><line x1="22" y1="22" x2="30" y2="30" stroke="#aab0bb" stroke-width="2.6" stroke-linecap="round"/><path d="M11 16 L14.5 19.5 L20.5 11.5" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+
+  align: '<svg viewBox="0 0 36 36" fill="none"><line x1="18" y1="3" x2="18" y2="33" stroke="#6b7280" stroke-width="1.4" stroke-dasharray="2.5,2.5"/><line x1="3" y1="18" x2="33" y2="18" stroke="#6b7280" stroke-width="1.4" stroke-dasharray="2.5,2.5"/><circle cx="18" cy="18" r="9" stroke="#f59e0b" stroke-width="2" fill="none"/><circle cx="18" cy="18" r="2" fill="#f59e0b"/><path d="M18 9 L20 13" stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round"/></svg>',
+
+  clean: '<svg viewBox="0 0 36 36" fill="none"><rect x="14" y="6" width="6" height="9" rx="1.5" fill="#aab0bb" transform="rotate(20 17 10)"/><path d="M19 13 Q24 18 22 26 Q21 30 16 29 Q12 28 13 23" stroke="#f59e0b" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="9" cy="14" r="1.3" fill="#9bd4f0" opacity=".8"/><circle cx="27" cy="11" r="1.7" fill="#9bd4f0" opacity=".7"/><circle cx="29" cy="20" r="1.1" fill="#9bd4f0" opacity=".7"/></svg>',
+
+  install: '<svg viewBox="0 0 36 36" fill="none"><rect x="9" y="19" width="18" height="11" rx="2.5" fill="#22c55e" opacity=".16" stroke="#22c55e" stroke-width="1.8"/><path d="M18 3 L18 17" stroke="#22c55e" stroke-width="2.4" stroke-linecap="round"/><path d="M12 11 L18 17 L24 11" stroke="#22c55e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+
+  reassemble: '<svg viewBox="0 0 36 36" fill="none"><path d="M9 12 A11 11 0 1 1 7.5 21" stroke="#aab0bb" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M5 23 L7.3 28 L12 25.3Z" fill="#f59e0b"/><path d="M27 24 A11 11 0 0 0 28 16" stroke="#f59e0b" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".55"/></svg>',
+
+  test: '<svg viewBox="0 0 36 36" fill="none"><path d="M4 24 Q10 14 18 13 Q26 14 32 24" stroke="#6b7280" stroke-width="2" fill="none"/><rect x="9" y="17" width="18" height="8" rx="3" fill="#aab0bb"/><circle cx="12.5" cy="26" r="3" fill="#5a6272"/><circle cx="23.5" cy="26" r="3" fill="#5a6272"/><circle cx="12.5" cy="26" r="1.2" fill="#cfd3da"/><circle cx="23.5" cy="26" r="1.2" fill="#cfd3da"/><path d="M25 8 L29 4 M27 9 L32 7" stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round"/></svg>',
+
+  default: '<svg viewBox="0 0 36 36" fill="none"><path d="M22 6a5.4 5.4 0 0 0-7 6.8L8 19.7a2 2 0 0 0 2.8 2.8l6.9-6.9A5.4 5.4 0 0 0 24.7 9l-2.8 2.8-2.3-2.3L22 6z" fill="#9aa0ab" opacity=".85"/><path d="M22 24 L29 31 M29 24 L22 31" stroke="#7a808a" stroke-width="2.2" stroke-linecap="round"/></svg>',
 };
 
 // Keyword -> icon mapping
@@ -786,7 +845,7 @@ var TR = {
     'err-vin-required':'Anna VIN-koodi','err-vin-length':'VIN-koodin on oltava 17 merkkiä',
     'err-make-required':'Merkki ja malli ovat pakollisia',
     'no-prices':'Hintoja ei löydy','no-videos':'Videoita ei löydy','no-diagrams':'Kaavioita ei löydy',
-    'cheapest':'HALVIN','see-site':'Katso sivustolta','copied':'Kopioitu!',
+    'cheapest':'HALVIN','see-site':'Katso sivustolta','copied':'Kopioitu!','lbl-copyall':'Kopioi kaikki',
     'manual-entry':'Syötetty manuaalisesti','recent-label':'Viimeisimmät:',
     'diagram-search':'Hae lisää kaavioita Google Kuvista',
     'field-year':'Vuosi','field-engine':'Moottori','field-fuel':'Polttoaine',
@@ -816,7 +875,7 @@ var TR = {
     'err-vin-required':'Please enter a VIN code','err-vin-length':'VIN must be exactly 17 characters',
     'err-make-required':'Make and model are required',
     'no-prices':'No prices found','no-videos':'No videos found','no-diagrams':'No diagrams found',
-    'cheapest':'CHEAPEST','see-site':'See site','copied':'Copied!',
+    'cheapest':'CHEAPEST','see-site':'See site','copied':'Copied!','lbl-copyall':'Copy all',
     'manual-entry':'Manually entered','recent-label':'Recent:',
     'diagram-search':'Search Google Images for more diagrams',
     'field-year':'Year','field-engine':'Engine','field-fuel':'Fuel',
@@ -961,7 +1020,6 @@ function setLang(lang) {
   renderCars();
 }
 
-function toggleLang() { setLang(LANG === 'fi' ? 'en' : 'fi'); }
 
 // ── localStorage cars ─────────────────────────────────────────
 function getCars() {
@@ -1440,8 +1498,25 @@ function runSearch(part) {
   document.getElementById('skeleton').style.display = 'block';
   document.getElementById('btn-search').disabled = true;
 
-  // Step 1: get part info
-  api('/api/part-info', {part: part, car: currentCar})
+  // Step 1: get part info (check 7-day localStorage cache first)
+  var _piKey = 'pi:v1:' + (currentCar ? (currentCar.vin||currentCar.make+currentCar.model) : '') + ':' + part.toLowerCase().trim();
+  var _piCached = null;
+  try {
+    var _piRaw = localStorage.getItem(_piKey);
+    if (_piRaw) {
+      var _piParsed = JSON.parse(_piRaw);
+      if (_piParsed.ts && (Date.now() - _piParsed.ts) < 604800000) { // 7 days
+        _piCached = _piParsed.data;
+      } else {
+        localStorage.removeItem(_piKey);
+      }
+    }
+  } catch(e) {}
+
+  (_piCached ? Promise.resolve(_piCached) : api('/api/part-info', {part: part, car: currentCar}).then(function(info){
+      try { localStorage.setItem(_piKey, JSON.stringify({ts: Date.now(), data: info})); } catch(e) {}
+      return info;
+    }))
     .then(function(info) {
       currentPartInfo = info;
       renderPartHeader(info, part);
@@ -1565,7 +1640,19 @@ function setPartImage(url) {
 }
 
 function copyNum(num) {
-  navigator.clipboard.writeText(num).then(function(){ showToast(t('copied')); });
+  navigator.clipboard.writeText(num).then(function(){ showToast(t('copied')); haptic('light'); });
+}
+
+function copyAllNums() {
+  if (!currentPartInfo || !currentPartInfo.part_numbers || !currentPartInfo.part_numbers.length) return;
+  var nums = currentPartInfo.part_numbers.map(function(p) {
+    return typeof p === 'object' ? p.number : p;
+  }).filter(Boolean);
+  if (!nums.length) return;
+  navigator.clipboard.writeText(nums.join(', ')).then(function() {
+    showToast(t('copied-all') || (LANG === 'fi' ? nums.length + ' numeroa kopioitu' : nums.length + ' numbers copied'));
+    haptic('success');
+  });
 }
 
 function renderPrices(prices) {
@@ -1769,7 +1856,13 @@ function setTuningTab(tab) {
     var el=document.getElementById('ttab-'+t);
     if(el) el.classList.toggle('active', t===tab);
   });
-  if (tab === 'cosm') { if (tuningData) renderCosmetics(tuningData); return; }
+  var ov = document.getElementById('tuning-overview');
+  if (tab === 'cosm') {
+    if (ov) ov.style.display = 'none';
+    if (tuningData) renderCosmetics(tuningData);
+    return;
+  }
+  if (ov && tuningData) renderTuningOverview(tuningData);
   var levelNum = parseInt(tab.replace('s',''));
   if (tuningLevels[tab]) { renderSingleLevel(tuningLevels[tab], levelNum-1); }
   else { loadTuningLevel(levelNum); }
@@ -1894,6 +1987,9 @@ function openTuning(car) {
   activeTuningTab = 's1';
   ['s1','s2','s3','cosm'].forEach(function(t){var el=document.getElementById('ttab-'+t);if(el)el.classList.toggle('active',t==='s1');});
   tuningData = null;
+  tuningLevels = {};
+  var ovEl = document.getElementById('tuning-overview');
+  if (ovEl) { ovEl.style.display = 'none'; ovEl.innerHTML = ''; }
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
 
@@ -1915,8 +2011,8 @@ function openTuning(car) {
 
   if (_cached) {
     tuningData = _cached;
-      tuningData = _cached;
-      loadTuningLevel(1);
+    renderTuningOverview(_cached);
+    loadTuningLevel(1);
   } else {
     api('/api/tuning', {car: car, lang: LANG})
       .then(function(data) {
@@ -1924,13 +2020,32 @@ function openTuning(car) {
           try { localStorage.setItem(_cacheKey, JSON.stringify({ts: Date.now(), data: data})); } catch(e) {}
         }
         tuningData = data;
-        tuningData = data;
+        renderTuningOverview(data);
         loadTuningLevel(1);
       })
       .catch(function(e) {
         body.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
       });
   }
+}
+
+function renderTuningOverview(data) {
+  var ov = document.getElementById('tuning-overview');
+  if (!data || data.error || (!data.stock_hp && !data.stock_torque && !data.summary)) {
+    ov.style.display = 'none';
+    ov.innerHTML = '';
+    return;
+  }
+  var html = '';
+  if (data.stock_hp || data.stock_torque) {
+    html += '<div class="tuning-stock">'
+      + (data.stock_hp ? '<div class="tuning-stat"><div class="tuning-stat-val">'+data.stock_hp+' hp</div><div class="tuning-stat-lbl">'+(LANG==='fi'?'Vakioteho':'Stock power')+'</div></div>' : '')
+      + (data.stock_torque ? '<div class="tuning-stat"><div class="tuning-stat-val">'+data.stock_torque+' Nm</div><div class="tuning-stat-lbl">'+(LANG==='fi'?'Vakiovääntö':'Stock torque')+'</div></div>' : '')
+      + '</div>';
+  }
+  if (data.summary) html += '<div class="tuning-summary">'+data.summary+'</div>';
+  ov.innerHTML = html;
+  ov.style.display = html ? '' : 'none';
 }
 
 // Tuning mod name -> specific search term
@@ -2116,64 +2231,6 @@ function renderMod(mod) {
     +'</button></div>';
 }
 
-function renderTuning(data) {
-  var body = document.getElementById('tuning-body');
-  if (!data || data.error) {
-    var msg = (data && data.error ? data.error : 'Ei tietoja');
-    var raw = data && data.raw_response ? '<pre style="font-size:10px;color:var(--text3);margin-top:8px;white-space:pre-wrap">' + data.raw_response + '</pre>' : '';
-    body.innerHTML = '<div class="empty">' + msg + raw + '</div>';
-    return;
-  }
-  var EFFECTS = {
-    power_hp:        {label: LANG==='fi'?'Teho':'Power',        unit:'hp',     type:'real'},
-    torque_nm:       {label: LANG==='fi'?'Vääntö':'Torque',     unit:'Nm',     type:'real'},
-    handling:        {label: LANG==='fi'?'Ajettavuus':'Handling',unit:'',       type:'score'},
-    fuel_l100km:     {label: LANG==='fi'?'Kulutus':'Fuel',      unit:'l/100km',type:'fuel'},
-    reliability:     {label: LANG==='fi'?'Luotettavuus':'Reliability',unit:'', type:'score'},
-    daily_usability: {label: LANG==='fi'?'Arkikäyttö':'Daily',  unit:'',       type:'score'},
-    // Legacy fallbacks
-    power:           {label: LANG==='fi'?'Teho':'Power',        unit:'hp',     type:'real'},
-    torque:          {label: LANG==='fi'?'Vääntö':'Torque',     unit:'Nm',     type:'real'},
-    fuel_economy:    {label: LANG==='fi'?'Kulutus':'Fuel',      unit:'l/100km',type:'fuel'},
-  };
-  var CAT_CLASS = {engine:'cat-engine',suspension:'cat-suspension',exhaust:'cat-exhaust',brakes:'cat-brakes'};
-  var CAT_LABEL = {engine:LANG==='fi'?'Moottori':'Engine',suspension:LANG==='fi'?'Alusta':'Suspension',exhaust:LANG==='fi'?'Pakoputki':'Exhaust',brakes:LANG==='fi'?'Jarrut':'Brakes',other:LANG==='fi'?'Muu':'Other'};
-  var LV_CLASS = ['lv1','lv2','lv3'];
-  var stockHp = data.stock_hp||0, stockTq = data.stock_torque||0;
-  var html = '';
-  if (stockHp||stockTq) {
-    html += '<div class="tuning-stock">'
-      +(stockHp?'<div class="tuning-stat"><div class="tuning-stat-val">'+stockHp+' hp</div><div class="tuning-stat-lbl">'+(LANG==='fi'?'Vakioteho':'Stock power')+'</div></div>':'')
-      +(stockTq?'<div class="tuning-stat"><div class="tuning-stat-val">'+stockTq+' Nm</div><div class="tuning-stat-lbl">'+(LANG==='fi'?'Vakiovääntö':'Stock torque')+'</div></div>':'')
-      +'</div>';
-  }
-  if (data.summary) html += '<div class="tuning-summary">'+data.summary+'</div>';
-  var levels = ensureArray(data.levels);
-  // Ensure we always have 3 levels even if AI returned fewer
-  var LV_DEFAULTS = [
-    {level:1, name: LANG==='fi'?'Stage 1 — Perustason viritys':'Stage 1 — Bolt-on', description:'', total_hp:0, total_cost_eur:0, mods:[]},
-    {level:2, name: LANG==='fi'?'Stage 2 — Tehostettu viritys':'Stage 2 — Hardware', description:'', total_hp:0, total_cost_eur:0, mods:[]},
-    {level:3, name: LANG==='fi'?'Stage 3 — Äärimmäinen viritys':'Stage 3 — Major', description:'', total_hp:0, total_cost_eur:0, mods:[]},
-  ];
-  while (levels.length < 3) levels.push(LV_DEFAULTS[levels.length]);
-  if (!levels.length && data.mods) {
-    html += ensureArray(data.mods).map(renderMod).join('');
-  } else {
-    levels.forEach(function(lv,idx){
-      var lvc = LV_CLASS[idx]||'lv1';
-      html += '<div class="tuning-level">'
-        +'<div class="level-header '+lvc+'">'
-        +'<div class="level-badge">S'+(lv.level||idx+1)+'</div>'
-        +'<div class="level-info"><div class="level-name">'+(lv.name||'Stage '+(idx+1))+'</div><div class="level-desc">'+(lv.description||'')+'</div></div>'
-        +'<div class="level-stats">'+(lv.total_hp?'<div class="level-hp">'+lv.total_hp+' hp</div>':'')+(lv.total_cost_eur?'<div class="level-cost">~€'+lv.total_cost_eur.toLocaleString()+'</div>':'')+'</div>'
-        +'</div>'
-        +ensureArray(lv.mods).map(renderMod).join('')
-        +'</div>';
-    });
-  }
-  body.innerHTML = html;
-  haptic('success');
-}
 
 // ── Init ───────────────────────────────────────────────────────
 applyLang();

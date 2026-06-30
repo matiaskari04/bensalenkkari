@@ -1,11 +1,12 @@
 // Bensalenkkari Service Worker
-const CACHE = 'bensalenkkari-v1';
+const CACHE = 'bensalenkkari-v3';
 
 // Assets to cache on install for offline use
 const PRECACHE = [
   '/',
   '/manifest.json',
-  '/icon-192.svg',
+  '/icon-192.png',
+  '/static/logo-full.png',
   'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap',
 ];
 

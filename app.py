@@ -245,13 +245,13 @@ def service_worker():
     resp.headers["Cache-Control"] = "no-cache"
     return resp
 
-@app.route("/icon-192.svg")
+@app.route("/icon-192.png")
 def icon192():
-    return send_from_directory("static", "icon-192.svg", mimetype="image/svg+xml")
+    return send_from_directory("static", "icon-192.png", mimetype="image/png")
 
-@app.route("/icon-512.svg")
+@app.route("/icon-512.png")
 def icon512():
-    return send_from_directory("static", "icon-512.svg", mimetype="image/svg+xml")
+    return send_from_directory("static", "icon-512.png", mimetype="image/png")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

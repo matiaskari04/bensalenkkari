@@ -1335,6 +1335,75 @@ _MOTONET_HEADERS = {
     "Origin": "https://www.motonet.fi",
 }
 
+_BROWSE_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+}
+
+# ── Price cache ────────────────────────────────────────────────────────
+# Keyed by sorted OEM numbers + country so repeated searches are instant.
+import time as _tcache
+_price_cache: dict = {}
+_PRICE_CACHE_TTL = 86400  # 24 hours
+
+def _price_cache_key(oem_numbers: list, country: str) -> str:
+    return f"{country}:{','.join(sorted(set(oem_numbers)))}"
+
+def _price_cache_get(key: str):
+    entry = _price_cache.get(key)
+    if entry and (_tcache.time() - entry[0]) < _PRICE_CACHE_TTL:
+        return entry[1]
+    return None
+
+def _price_cache_set(key: str, value: list):
+    _price_cache[key] = (_tcache.time(), value)
+
+
+# ── Product page price fetcher ─────────────────────────────────────────
+def _scrape_price_from_page(url: str) -> float | None:
+    """
+    Try to extract a price from a product page. Checks JSON-LD structured
+    data first (reliable), then falls back to a simple regex scan.
+    Used for shops whose search APIs don't return prices (AK24, ALVADI).
+    Short timeout — treated as best-effort, never blocks the main flow.
+    """
+    try:
+        import json as _json
+        r = requests.get(url, headers=_BROWSE_HEADERS, timeout=4)
+        if not r.ok:
+            return None
+        html = r.text
+
+        # 1) JSON-LD — most reliable, standard e-commerce structured data
+        for ld_raw in re.findall(
+            r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+            html, re.DOTALL | re.IGNORECASE
+        ):
+            try:
+                data = _json.loads(ld_raw.strip())
+                items = data if isinstance(data, list) else [data]
+                for item in items:
+                    if item.get("@type") == "Product":
+                        offers = item.get("offers") or {}
+                        if isinstance(offers, list):
+                            offers = offers[0] if offers else {}
+                        price = offers.get("price") or offers.get("lowPrice")
+                        if price is not None:
+                            return float(str(price).replace(",", "."))
+            except Exception:
+                pass
+
+        # 2) Regex fallback — find the first price-like string
+        m = re.search(r'(\d{1,5}[.,]\d{2})\s*€', html)
+        if m:
+            return float(m.group(1).replace(",", "."))
+
+    except Exception:
+        pass
+    return None
+
 
 def _motonet_search(oem_numbers: list) -> list:
     """
@@ -1348,7 +1417,7 @@ def _motonet_search(oem_numbers: list) -> list:
         return []
 
     all_codes = []
-    code_to_info = {}  # code → {name, ...}
+    code_to_info = {}  # code → {name, oem_used}
 
     # Step 1: suggestions for each OEM number
     for num in oem_numbers[:6]:
@@ -1362,7 +1431,7 @@ def _motonet_search(oem_numbers: list) -> list:
                 for product in r.json().get("products", []):
                     code = product.get("id")
                     if code and code not in code_to_info:
-                        code_to_info[code] = {"name": product.get("name", code)}
+                        code_to_info[code] = {"name": product.get("name", code), "oem_used": num}
                         all_codes.append(code)
         except Exception:
             pass
@@ -1387,7 +1456,8 @@ def _motonet_search(oem_numbers: list) -> list:
             if not code:
                 continue
             price = (item.get("price") or {}).get("price")
-            name  = code_to_info.get(code, {}).get("name", code)
+            name     = code_to_info.get(code, {}).get("name", code)
+            oem_used = code_to_info.get(code, {}).get("oem_used", "")
 
             # Build direct product URL — pattern: /tuote/{slug}?product={code}
             # Spaces → hyphens, preserve existing hyphens, product param uses ?
@@ -1395,13 +1465,14 @@ def _motonet_search(oem_numbers: list) -> list:
             url  = f"https://www.motonet.fi/tuote/{slug}?product={code}"
 
             results.append({
-                "shop":     "Motonet",
-                "part":     name[:60],
-                "price":    price,
-                "currency": "EUR",
-                "url":      url,
-                "shipping": "1-3 days (FI)",
-                "note":     "" if price else "Katso sivustolta",
+                "shop":        "Motonet",
+                "part":        name[:60],
+                "price":       price,
+                "currency":    "EUR",
+                "url":         url,
+                "shipping":    "1-3 days (FI)",
+                "note":        "" if price else "Katso sivustolta",
+                "matched_via": oem_used,
             })
         return results
 
@@ -1462,13 +1533,14 @@ def _biltema_search(oem_numbers: list) -> list:
                 url = f"https://www.biltema.fi/fi/search?query={urllib.parse.quote_plus(article_id)}"
 
                 results.append({
-                    "shop":     "Biltema",
-                    "part":     name[:60],
-                    "price":    price_raw,
-                    "currency": "EUR",
-                    "url":      url,
-                    "shipping": "1-3 days (FI)",
-                    "note":     "" if price_raw else "Katso sivustolta",
+                    "shop":        "Biltema",
+                    "part":        name[:60],
+                    "price":       price_raw,
+                    "currency":    "EUR",
+                    "url":         url,
+                    "shipping":    "1-3 days (FI)",
+                    "note":        "" if price_raw else "Katso sivustolta",
+                    "matched_via": num,
                 })
         except Exception:
             pass
@@ -1480,7 +1552,8 @@ def _ak24_search(oem_numbers: list) -> list:
     """
     AK24's internal WordPress AJAX search endpoint.
     GET /?ajax=tcd&fn=search&term={oem}
-    Returns direct product page URLs + product names — no scraping needed.
+    Returns direct product page URLs. Also tries to scrape price from
+    each product page (best-effort, short timeout).
     """
     if not oem_numbers:
         return []
@@ -1504,19 +1577,19 @@ def _ak24_search(oem_numbers: list) -> list:
             for item in r.json():
                 url   = item.get("value", "")
                 label = item.get("label", "")
-                if not url or url in seen_urls:
-                    continue
-                if "ak24.fi" not in url:
+                if not url or url in seen_urls or "ak24.fi" not in url:
                     continue
                 seen_urls.add(url)
+                price = _scrape_price_from_page(url)
                 results.append({
-                    "shop":     "AK24",
-                    "part":     label[:60],
-                    "price":    None,
-                    "currency": "EUR",
-                    "url":      url,
-                    "shipping": "3-5 days",
-                    "note":     "Katso sivustolta",
+                    "shop":        "AK24",
+                    "part":        label[:60],
+                    "price":       price,
+                    "currency":    "EUR",
+                    "url":         url,
+                    "shipping":    "3-5 days",
+                    "note":        "" if price else "Katso sivustolta",
+                    "matched_via": num,
                 })
         except Exception:
             pass
@@ -1566,29 +1639,22 @@ def _alvadi_search(oem_numbers: list) -> list:
             name_match = re.search(r'class="name">(.*?)</span>', html, re.DOTALL)
             name = re.sub(r"<[^>]+>", "", name_match.group(1)).strip() if name_match else num
 
+            price = _scrape_price_from_page(url)
             results.append({
-                "shop":     "ALVADI",
-                "part":     name[:60],
-                "price":    None,
-                "currency": "EUR",
-                "url":      url,
-                "shipping": "2-4 days (EE→FI)",
-                "note":     "Katso sivustolta",
+                "shop":        "ALVADI",
+                "part":        name[:60],
+                "price":       price,
+                "currency":    "EUR",
+                "url":         url,
+                "shipping":    "2-4 days (EE→FI)",
+                "note":        "" if price else "Katso sivustolta",
+                "matched_via": num,
             })
         except Exception:
             pass
 
     return results
 
-
-
-    """
-    AK24's internal WordPress AJAX search endpoint.
-    GET /?ajax=tcd&fn=search&term={oem}
-    Returns direct product page URLs + product names.
-    """
-    if not oem_numbers:
-        return []
 
     results = []
     seen_urls = set()
@@ -1978,6 +2044,14 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
 
     print(f"  {Fore.GREEN}✓ Price search — {len(oem_numbers)} OEM numbers, part: {base_part[:40]}{Style.RESET_ALL}")
 
+    # ── Cache check ────────────────────────────────────────────────────
+    cache_key = _price_cache_key(oem_numbers, country) if oem_numbers else ""
+    if cache_key:
+        cached = _price_cache_get(cache_key)
+        if cached is not None:
+            print(f"  {Fore.CYAN}✓ Price cache hit{Style.RESET_ALL}")
+            return cached
+
     try:
         results = []
 
@@ -1987,7 +2061,7 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
         except Exception:
             pass
 
-        # 0b) AK24 — internal AJAX search → direct product URLs
+        # 0b) AK24 — internal AJAX search → direct product URLs + price scraping
         try:
             results = _merge_price_results(results, _ak24_search(oem_numbers))
         except Exception:
@@ -2005,13 +2079,13 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
         except Exception:
             pass
 
-        # 0e) ALVADI — autocomplete API → direct product URLs when part exists
+        # 0e) ALVADI — autocomplete API → direct product URLs + price scraping
         try:
             results = _merge_price_results(results, _alvadi_search(oem_numbers))
         except Exception:
             pass
 
-        # 1) Site: searches for other Nordic shops
+        # 1) Site: searches for other Nordic shops via Google
         if is_nordic and oem_numbers and SERPER_API_KEY:
             for shop in _KNOWN_SHOPS:
                 try:
@@ -2031,9 +2105,24 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
                 except Exception:
                     pass
 
+        # 3) Name-based fallback — if OEM numbers found nothing, search by
+        #    part name + car. Catches cases where the OEM number isn't indexed
+        #    by shops but the part still exists under a generic name.
+        if not results and base_part and SERPER_API_KEY:
+            try:
+                q = " ".join(filter(None, [base_part, make, model, year])).strip()
+                batch = _fetch_via_serper(q, country, [], car=car)
+                results = _merge_price_results(results, batch)
+            except Exception:
+                pass
+
         if not results:
             fallback_query = f"{year} {make} {model} {base_part}".strip()
             return _fetch_fallback_links(fallback_query, country, oem_numbers)
+
+        # ── Cache save ─────────────────────────────────────────────────
+        if cache_key:
+            _price_cache_set(cache_key, results)
 
         return results
 

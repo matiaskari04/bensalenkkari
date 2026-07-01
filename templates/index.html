@@ -214,6 +214,7 @@ input,select{font-family:inherit}
 .price-card-sm:hover{border-color:var(--amber)}
 .price-sm-name{font-size:13px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .price-sm-part{font-size:11px;color:var(--text2)}
+.price-sm-oem{font-size:10px;color:var(--accent);opacity:0.7;font-family:monospace}
 .price-sm-price{font-size:14px;font-weight:700;color:var(--amber);white-space:nowrap}
 .price-sm-price.muted{color:var(--text3);font-size:12px}
 
@@ -1768,6 +1769,7 @@ function renderPrices(prices) {
             + '<div style="flex:1;min-width:0">'
             + '<div class="price-sm-name">' + p.shop + '</div>'
             + (p.part ? '<div class="price-sm-part">' + p.part + '</div>' : '')
+            + (p.matched_via ? '<div class="price-sm-oem">OEM: ' + p.matched_via + '</div>' : '')
             + '</div>'
             + '<div class="price-sm-price' + (p.price==null?' muted':'') + '">' + priceStr + '</div>'
             + '</a>';

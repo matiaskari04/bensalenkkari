@@ -1560,28 +1560,43 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
     def run_serper_shopping():
         if not SERPER_API_KEY:
             return []
+        results = []
         if oem_numbers:
-            q = f"{oem_numbers[0]} {make} {model} {base_part}".strip()
+            # Search each OEM number separately — different shops stock
+            # different numbers so one query rarely covers all of them.
+            for num in oem_numbers[:4]:
+                q = f"{num} {make} {model}".strip()
+                try:
+                    batch = _fetch_via_serper(q, country, [num])
+                    results = _merge_price_results(results, batch)
+                except Exception:
+                    pass
         else:
             q = " ".join(filter(None, [year, make, model, engine, base_part])).strip()
-        return _fetch_via_serper(q, country, oem_numbers)
+            results = _fetch_via_serper(q, country, [])
+        return results
 
-    # Run both in parallel
+    # Run both in parallel — wrap each in try/except so one failure
+    # never silently kills the other or crashes the whole function.
+    shop_results   = []
+    serper_results = []
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-        shop_fut    = ex.submit(run_shop_search)
-        serper_fut  = ex.submit(run_serper_shopping)
-        shop_results   = shop_fut.result(timeout=20)
-        serper_results = serper_fut.result(timeout=20)
+        shop_fut   = ex.submit(run_shop_search)
+        serper_fut = ex.submit(run_serper_shopping)
+        try:
+            shop_results   = shop_fut.result(timeout=22)
+        except Exception as e:
+            print(f"  [site-search error] {e}")
+        try:
+            serper_results = serper_fut.result(timeout=15)
+        except Exception as e:
+            print(f"  [serper error] {e}")
 
-    # From Serper Shopping, only keep eBay/Amazon (the rest are handled by site: search)
-    global_shops = [r for r in serper_results
-                    if "ebay" in r.get("shop", "").lower() or "amazon" in r.get("shop", "").lower()]
-
-    if not is_nordic:
-        # Non-Nordic: use all Serper results
-        global_shops = serper_results
-
-    results = _merge_price_results(shop_results, global_shops)
+    # Include ALL Serper Shopping results — not just eBay/Amazon.
+    # Serper Shopping often surfaces Finnish shop results directly.
+    # Site: search results supplement with verified direct product URLs.
+    results = _merge_price_results(shop_results, serper_results)
 
     if not results:
         fallback_query = f"{year} {make} {model} {base_part}".strip()
@@ -1609,8 +1624,6 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
         for item in items:
             source = item.get("source", item.get("seller", "Unknown"))
             src_low = source.lower()
-            if "ebay" not in src_low and "amazon" not in src_low:
-                continue
             key = re.sub(r"[^a-z]", "", src_low)[:12]
             if seen.get(key, 0) >= 3:
                 continue

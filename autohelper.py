@@ -1313,31 +1313,145 @@ def _add_autodoc_aff(url: str) -> str:
 # for those specifically.
 # ════════════════════════════════════════════════════════════════════════
 
-def _direct_shop_links(oem_numbers: list, query: str) -> list:
-    """Build direct, honest search-page links for known shops. Always real,
-    always goes straight to that shop's own site — never a Google redirect."""
-    q = urllib.parse.quote_plus(query)
-    oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else q
-    return [
-        {"shop": "Autodoc", "price": None, "currency": "EUR",
-         "url": _add_autodoc_aff(f"https://www.autodoc.fi/search?query={oem_q}"),
-         "shipping": "3-7 days", "note": "Katso sivustolta"},
-        {"shop": "Motonet", "price": None, "currency": "EUR",
-         "url": f"https://www.motonet.fi/fi/search?q={oem_q}",
-         "shipping": "1-3 days (FI)", "note": "Katso sivustolta"},
-        {"shop": "AK24", "price": None, "currency": "EUR",
-         "url": f"https://www.ak24.fi/fi/search?term={oem_q}",
-         "shipping": "3-5 days", "note": "Katso sivustolta"},
-        {"shop": "Trodo", "price": None, "currency": "EUR",
-         "url": f"https://www.trodo.com/en/search?q={oem_q}",
-         "shipping": "3-7 days", "note": "Katso sivustolta"},
-    ]
+# ════════════════════════════════════════════════════════════════════════
+# PART PRICE SEARCH — site: search approach
+#
+# For each known Nordic shop, we ask Google (via Serper's web search
+# endpoint) to find pages on that shop's domain that contain any of the
+# OEM/aftermarket numbers for this part. If Google returns a result, it's
+# a real, indexed product page — we link directly to it. If Google finds
+# nothing, that shop simply doesn't appear in the results. No direct
+# connection to the shops from our server, so no 403 bot-blocking.
+# eBay/Amazon still come through Serper's Shopping endpoint.
+# ════════════════════════════════════════════════════════════════════════
+
+# Known shops to search via site: operator
+_KNOWN_SHOPS = [
+    {"name": "Autodoc",  "site": "autodoc.fi",  "shipping": "3-7 days",     "url_transform": "_add_autodoc_aff"},
+    {"name": "Motonet",  "site": "motonet.fi",  "shipping": "1-3 days (FI)","url_transform": None},
+    {"name": "AK24",     "site": "ak24.fi",     "shipping": "3-5 days",     "url_transform": None},
+    {"name": "Trodo",    "site": "trodo.com",   "shipping": "3-7 days",     "url_transform": None},
+    {"name": "Biltema",  "site": "biltema.fi",  "shipping": "1-3 days (FI)","url_transform": None},
+]
+
+# URL patterns that indicate a category/nav page rather than a product page
+_NON_PRODUCT_PATH_PATTERNS = [
+    "/search", "/haku", "/category", "/kategoria", "/brand", "/merkki",
+    "/blog", "/about", "/help", "/login", "/cart", "?page=", "?sort=",
+]
+
+
+def _is_product_url(url: str, site: str) -> bool:
+    """Best-effort check that a URL looks like a product page, not a category."""
+    if site not in url:
+        return False
+    path = urllib.parse.urlparse(url).path.lower()
+    if any(p in url.lower() for p in _NON_PRODUCT_PATH_PATTERNS):
+        return False
+    # Product pages generally have at least 2 path segments
+    parts = [p for p in path.strip("/").split("/") if p]
+    return len(parts) >= 1
+
+
+def _site_search_one_shop(shop: dict, oem_numbers: list, country: str) -> list:
+    """
+    Ask Google to find pages on this shop's domain that contain any of the
+    OEM numbers. Returns a list of real product page results (possibly empty
+    if Google has no indexed match for any of the numbers).
+    """
+    if not SERPER_API_KEY or not oem_numbers:
+        return []
+
+    # Build: site:autodoc.fi ("OEM1" OR "OEM2" OR "OEM3" ...)
+    # Quoted numbers ensure we match the number exactly, not as a substring
+    terms = " OR ".join(f'"{n}"' for n in oem_numbers[:8])
+    query = f'site:{shop["site"]} ({terms})'
+
+    gl_code = country.lower() if country.upper() in COUNTRY_GOOGLE else "fi"
+    _, _, hl = COUNTRY_GOOGLE.get(country.upper(), ("google.com", "EUR", "fi"))
+
+    try:
+        r = requests.post(
+            "https://google.serper.dev/search",
+            headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
+            json={"q": query, "gl": gl_code, "hl": hl, "num": 5},
+            timeout=12,
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        results = []
+        seen_urls = set()
+
+        for item in data.get("organic", [])[:5]:
+            url = item.get("link", "")
+            if not url or url in seen_urls:
+                continue
+            if not _is_product_url(url, shop["site"]):
+                continue
+            seen_urls.add(url)
+
+            # Apply affiliate transform if needed
+            if shop["url_transform"] == "_add_autodoc_aff":
+                url = _add_autodoc_aff(url)
+            elif shop["url_transform"] == "_add_amazon_tag":
+                url = _add_amazon_tag(url)
+
+            # Try to extract a price from the snippet
+            snippet = item.get("snippet", "") or ""
+            price_num = None
+            price_match = re.search(r"(\d{1,5}[.,]\d{2})\s*€", snippet)
+            if price_match:
+                try:
+                    price_num = float(price_match.group(1).replace(",", "."))
+                except Exception:
+                    pass
+
+            results.append({
+                "shop": shop["name"],
+                "part": item.get("title", "")[:60],
+                "price": price_num,
+                "currency": "EUR",
+                "url": url,
+                "shipping": shop["shipping"],
+                "note": "" if price_num else "Katso sivustolta",
+            })
+
+        return results
+
+    except Exception:
+        return []
+
+
+def _site_search_all_shops(oem_numbers: list, country: str) -> list:
+    """
+    Run site: searches for all known shops in parallel. Each shop gets one
+    Serper call covering ALL OEM numbers at once. Only shops where Google
+    has indexed a matching product page will appear in the results.
+    """
+    if not oem_numbers or not SERPER_API_KEY:
+        return []
+
+    results = []
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(_KNOWN_SHOPS)) as ex:
+        futures = {
+            ex.submit(_site_search_one_shop, shop, oem_numbers, country): shop["name"]
+            for shop in _KNOWN_SHOPS
+        }
+        for fut in concurrent.futures.as_completed(futures, timeout=18):
+            try:
+                shop_results = fut.result()
+                results.extend(shop_results)
+            except Exception:
+                pass
+    return results
 
 
 def _clean_shop_url(url: str, source: str) -> str:
     """
     Extract the real destination URL from Google Shopping redirect links.
-    Used for eBay/Amazon results that come through Serper.
+    Used for eBay/Amazon results that come through Serper Shopping.
     """
     if not url or url == "#":
         return url
@@ -1375,26 +1489,32 @@ def _clean_shop_url(url: str, source: str) -> str:
 
 
 def _merge_price_results(primary: list, secondary: list) -> list:
-    """Merge two price result lists, deduplicating by shop domain."""
+    """Merge two price result lists, deduplicating by URL and capping per shop."""
+    seen_urls = set()
     seen_shops = {}
     merged = []
-    BOOSTED = {"motonet", "ak24", "autodoc", "biltema", "trodo"}
     for item in primary + secondary:
+        url = item.get("url", "")
+        if url and url in seen_urls:
+            continue
+        if url:
+            seen_urls.add(url)
         shop = item.get("shop", "")
-        key = re.sub(r"[^a-z].*", "", shop.lower())[:15]
-        max_per = 3 if key in BOOSTED else 2
+        key = re.sub(r"[^a-z]", "", shop.lower())[:12]
         count = seen_shops.get(key, 0)
-        if count < max_per:
-            seen_shops[key] = count + 1
-            merged.append(item)
-    return merged[:18]
+        if count >= 4:  # allow up to 4 per shop (multiple OEM hits)
+            continue
+        seen_shops[key] = count + 1
+        merged.append(item)
+    return merged[:20]
 
 
 def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> list[dict]:
     """
-    Known shops (Motonet, AK24, Autodoc, Trodo) always get a direct search
-    link built from the best OEM number — no scraping, no bot-block risk.
-    eBay/Amazon are discovered live via Serper.
+    Known shops: searched via Google site: operator using all OEM numbers.
+    Only shops where Google has a real indexed product page appear.
+    eBay/Amazon: discovered via Serper Shopping as before.
+    All searches run in parallel.
     """
     make   = car.get("make", "")
     model  = car.get("model", "")
@@ -1405,11 +1525,11 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
     if part_info:
         raw_numbers = part_info.get("part_numbers", [])
         keywords    = part_info.get("search_keywords", "")
-        skip_words  = {make.lower(), model.lower(), year, "saab", "toyota", "ford", "volvo", "bmw", "audi"}
+        skip_words  = {make.lower(), model.lower(), year}
         for item in raw_numbers:
             n = item.get("number", "") if isinstance(item, dict) else str(item)
             n = n.strip()
-            if n and len(n) >= 4 and not any(w in n.lower() for w in skip_words):
+            if n and len(n) >= 4 and not any(w == n.lower() for w in skip_words):
                 oem_numbers.append(n)
         for kw in keywords.split(","):
             kw = kw.strip()
@@ -1426,29 +1546,42 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
         if word and word.lower() in base_part.lower():
             base_part = re.sub(re.escape(word), "", base_part, flags=re.IGNORECASE).strip()
 
+    print(f"  {Fore.GREEN}✓ Price search — {len(oem_numbers)} OEM numbers, part: {base_part[:40]}{Style.RESET_ALL}")
+
     results = []
 
-    # 1) Known Nordic shops — direct search-page links, always present
-    if is_nordic:
-        query_for_links = f"{year} {make} {model} {base_part}".strip()
-        results.extend(_direct_shop_links(oem_numbers, query_for_links))
+    import concurrent.futures
 
-    # 2) eBay / Amazon via Serper — genuine live discovery
-    if SERPER_API_KEY:
+    def run_shop_search():
+        if is_nordic and oem_numbers:
+            return _site_search_all_shops(oem_numbers, country)
+        return []
+
+    def run_serper_shopping():
+        if not SERPER_API_KEY:
+            return []
         if oem_numbers:
-            query = f"{oem_numbers[0]} {make} {model} {base_part}".strip()
+            q = f"{oem_numbers[0]} {make} {model} {base_part}".strip()
         else:
-            query = " ".join(filter(None, [year, make, model, engine, base_part])).strip()
-        try:
-            serper_raw = _fetch_via_serper(query, country, oem_numbers)
-        except Exception:
-            serper_raw = []
-        global_shops = [r for r in serper_raw
-                         if "ebay" in r.get("shop", "").lower() or "amazon" in r.get("shop", "").lower()]
-        results = _merge_price_results(results, global_shops)
-        if not is_nordic:
-            other_shops = [r for r in serper_raw if r not in global_shops]
-            results = _merge_price_results(results, other_shops)
+            q = " ".join(filter(None, [year, make, model, engine, base_part])).strip()
+        return _fetch_via_serper(q, country, oem_numbers)
+
+    # Run both in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+        shop_fut    = ex.submit(run_shop_search)
+        serper_fut  = ex.submit(run_serper_shopping)
+        shop_results   = shop_fut.result(timeout=20)
+        serper_results = serper_fut.result(timeout=20)
+
+    # From Serper Shopping, only keep eBay/Amazon (the rest are handled by site: search)
+    global_shops = [r for r in serper_results
+                    if "ebay" in r.get("shop", "").lower() or "amazon" in r.get("shop", "").lower()]
+
+    if not is_nordic:
+        # Non-Nordic: use all Serper results
+        global_shops = serper_results
+
+    results = _merge_price_results(shop_results, global_shops)
 
     if not results:
         fallback_query = f"{year} {make} {model} {base_part}".strip()
@@ -1458,39 +1591,27 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
 
 
 def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> list[dict]:
+    """Serper Shopping search — used for eBay/Amazon discovery."""
     _, currency, hl = COUNTRY_GOOGLE.get(country.upper(), ("google.com", "EUR", "en"))
     gl_code = country.lower() if country.upper() in COUNTRY_GOOGLE else "fi"
     try:
         r = requests.post(
             "https://google.serper.dev/shopping",
             headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
-            json={"q": query, "gl": gl_code, "hl": hl, "num": 30},
-            timeout=15,
+            json={"q": query, "gl": gl_code, "hl": hl, "num": 20},
+            timeout=12,
         )
         r.raise_for_status()
         items = r.json().get("shopping", [])
 
-        preferred = PREFERRED_SHOPS.get(country.upper(), PREFERRED_SHOPS["DEFAULT"])
-
-        def sort_key(item):
-            source = item.get("source", "").lower()
-            pref = next((i for i, s in enumerate(preferred) if s in source), 999)
-            try:
-                price = float(re.sub(r"[^\d.]", "", str(item.get("price", "9999")).replace(",", ".")))
-            except Exception:
-                price = 9999
-            return (pref, price)
-
         results = []
         seen = {}
-        for item in sorted(items, key=sort_key):
+        for item in items:
             source = item.get("source", item.get("seller", "Unknown"))
             src_low = source.lower()
-            # Only eBay/Amazon pass through this path — known Nordic shops
-            # get their own direct search links instead.
             if "ebay" not in src_low and "amazon" not in src_low:
                 continue
-            key = re.sub(r"[^a-z].*", "", src_low.replace("ebay", "ebay"))[:15]
+            key = re.sub(r"[^a-z]", "", src_low)[:12]
             if seen.get(key, 0) >= 3:
                 continue
             seen[key] = seen.get(key, 0) + 1
@@ -1511,12 +1632,10 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
             raw_url = item.get("productLink") or item.get("link") or item.get("url") or "#"
             item_url = _clean_shop_url(raw_url, source)
             if item_url is None:
-                part_title = item.get("title", query)[:80]
-                q = urllib.parse.quote_plus(part_title)
-                if "ebay" in src_low:
-                    item_url = f"https://www.ebay.de/sch/i.html?_nkw={q}"
-                else:
-                    item_url = _add_amazon_tag(f"https://www.amazon.de/s?k={q}")
+                q = urllib.parse.quote_plus(item.get("title", query)[:80])
+                item_url = (f"https://www.ebay.de/sch/i.html?_nkw={q}"
+                            if "ebay" in src_low else
+                            _add_amazon_tag(f"https://www.amazon.de/s?k={q}"))
 
             results.append({
                 "shop": source,
@@ -1527,8 +1646,6 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 "shipping": _parse_shipping(item),
                 "note": "" if price_num else "See site",
             })
-            if len(results) >= 8:
-                break
 
         return results
     except Exception:
@@ -1536,20 +1653,18 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
 
 
 def _fetch_fallback_links(query: str, country: str, oem_numbers: list = None) -> list[dict]:
-    """Absolute last resort — only reached if even direct shop links + Serper found nothing."""
-    q   = urllib.parse.quote_plus(query)
+    """Last resort — only reached if site: searches + Serper both found nothing."""
+    q     = urllib.parse.quote_plus(query)
     oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else q
     return [
         {"shop": "Autodoc", "price": None, "url": _add_autodoc_aff(f"https://www.autodoc.fi/search?query={oem_q}"),
          "note": "Katso sivustolta", "shipping": "3-7 days"},
         {"shop": "Motonet", "price": None, "url": f"https://www.motonet.fi/fi/search?q={oem_q}",
          "note": "Katso sivustolta", "shipping": "1-3 days (FI)"},
-        {"shop": "AK24", "price": None, "url": f"https://www.ak24.fi/fi/search?term={oem_q}",
+        {"shop": "AK24",    "price": None, "url": f"https://www.ak24.fi/fi/search?term={oem_q}",
          "note": "Katso sivustolta", "shipping": "3-5 days"},
-        {"shop": "Trodo", "price": None, "url": f"https://www.trodo.com/en/search?q={oem_q}",
+        {"shop": "Trodo",   "price": None, "url": f"https://www.trodo.com/en/search?q={oem_q}",
          "note": "Katso sivustolta", "shipping": "3-7 days"},
-        {"shop": "Amazon.de", "price": None, "url": _add_amazon_tag(f"https://www.amazon.de/s?k={q}"),
-         "note": "Katso sivustolta", "shipping": "1-3 days"},
         {"shop": "eBay.de", "price": None, "url": f"https://www.ebay.de/sch/i.html?_nkw={q}",
          "note": "Katso sivustolta"},
     ]

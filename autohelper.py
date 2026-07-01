@@ -1489,23 +1489,53 @@ def _clean_shop_url(url: str, source: str) -> str:
 
 
 def _merge_price_results(primary: list, secondary: list) -> list:
-    """Merge two price result lists, deduplicating by URL and capping per shop."""
-    seen_urls = set()
+    """
+    Merge two result lists. Primary wins on URL deduplication UNLESS the
+    primary entry has no price and the secondary one does — in that case
+    the priced entry wins so we never discard real price data.
+    """
+    # Build a URL→item map from primary
+    url_map = {}
+    order = []
+    for item in primary:
+        url = item.get("url", "")
+        if url and url not in url_map:
+            url_map[url] = item
+            order.append(url)
+        elif not url:
+            order.append(None)
+            url_map[id(item)] = item
+
+    # Merge secondary: upgrade price-less primaries, skip true dupes
+    for item in secondary:
+        url = item.get("url", "")
+        if url and url in url_map:
+            existing = url_map[url]
+            # Upgrade if existing has no price but this one does
+            if existing.get("price") is None and item.get("price") is not None:
+                url_map[url] = item
+        elif url:
+            url_map[url] = item
+            order.append(url)
+        else:
+            order.append(None)
+            url_map[id(item)] = item
+
+    # Reassemble in order, capping per shop
     seen_shops = {}
     merged = []
-    for item in primary + secondary:
-        url = item.get("url", "")
-        if url and url in seen_urls:
+    for key in order:
+        item = url_map.get(key) if key is not None else None
+        if item is None:
             continue
-        if url:
-            seen_urls.add(url)
         shop = item.get("shop", "")
-        key = re.sub(r"[^a-z]", "", shop.lower())[:12]
-        count = seen_shops.get(key, 0)
-        if count >= 4:  # allow up to 4 per shop (multiple OEM hits)
+        shop_key = re.sub(r"[^a-z]", "", shop.lower())[:12]
+        count = seen_shops.get(shop_key, 0)
+        if count >= 4:
             continue
-        seen_shops[key] = count + 1
+        seen_shops[shop_key] = count + 1
         merged.append(item)
+
     return merged[:20]
 
 
@@ -1596,7 +1626,7 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
     # Include ALL Serper Shopping results — not just eBay/Amazon.
     # Serper Shopping often surfaces Finnish shop results directly.
     # Site: search results supplement with verified direct product URLs.
-    results = _merge_price_results(shop_results, serper_results)
+    results = _merge_price_results(serper_results, shop_results)  # Shopping first → prices win on dedup
 
     if not results:
         fallback_query = f"{year} {make} {model} {base_part}".strip()
@@ -1645,10 +1675,23 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
             raw_url = item.get("productLink") or item.get("link") or item.get("url") or "#"
             item_url = _clean_shop_url(raw_url, source)
             if item_url is None:
-                q = urllib.parse.quote_plus(item.get("title", query)[:80])
-                item_url = (f"https://www.ebay.de/sch/i.html?_nkw={q}"
-                            if "ebay" in src_low else
-                            _add_amazon_tag(f"https://www.amazon.de/s?k={q}"))
+                oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else urllib.parse.quote_plus(query)
+                if "ebay" in src_low:
+                    item_url = f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote_plus(item.get('title', query)[:80])}"
+                elif "amazon" in src_low:
+                    item_url = _add_amazon_tag(f"https://www.amazon.de/s?k={urllib.parse.quote_plus(query)}")
+                elif "autodoc" in src_low:
+                    item_url = _add_autodoc_aff(f"https://www.autodoc.fi/search?query={oem_q}")
+                elif "motonet" in src_low:
+                    item_url = f"https://www.motonet.fi/fi/search?q={oem_q}"
+                elif "ak24" in src_low:
+                    item_url = f"https://www.ak24.fi/fi/search?term={oem_q}"
+                elif "trodo" in src_low:
+                    item_url = f"https://www.trodo.com/en/search?q={oem_q}"
+                elif "biltema" in src_low:
+                    item_url = f"https://www.biltema.fi/fi/search?query={oem_q}"
+                else:
+                    continue  # can't build a sensible fallback — skip this result
 
             results.append({
                 "shop": source,

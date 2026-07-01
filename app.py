@@ -153,6 +153,21 @@ def api_prices():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/serper-test", methods=["GET"])
+def api_serper_test():
+    """Quick raw Serper test — GET /api/serper-test?q=4835709+Skoda+Octavia"""
+    import os, requests as req
+    key = os.environ.get("SERPER_API_KEY","")
+    q   = request.args.get("q","4835709 Skoda Octavia ball joint")
+    try:
+        r = req.post("https://google.serper.dev/shopping",
+            headers={"X-API-KEY": key,"Content-Type":"application/json"},
+            json={"q": q,"gl":"fi","hl":"fi","num":10}, timeout=12)
+        return jsonify({"status": r.status_code, "key_set": bool(key),
+                        "items": r.json().get("shopping",[])[:5]})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 @app.route("/api/youtube", methods=["POST"])
 def api_youtube():
     data = request.json or {}

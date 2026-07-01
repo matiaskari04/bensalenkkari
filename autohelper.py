@@ -1326,6 +1326,88 @@ def _add_autodoc_aff(url: str) -> str:
 # ════════════════════════════════════════════════════════════════════════
 
 # Known shops to search via site: operator
+_MOTONET_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "fi-FI,fi;q=0.9,en;q=0.8",
+    "Referer": "https://www.motonet.fi/",
+    "Origin": "https://www.motonet.fi",
+}
+
+
+def _motonet_search(oem_numbers: list) -> list:
+    """
+    Use Motonet's own internal APIs (no bot-blocking since they power
+    their own site search):
+      1. GET /api/suggestions?q={oem}  — finds Motonet product codes
+      2. POST /api/pricing/prices?locale=fi — gets real prices for those codes
+    Returns direct product page URLs with real prices.
+    """
+    if not oem_numbers:
+        return []
+
+    all_codes = []
+    code_to_info = {}  # code → {name, ...}
+
+    # Step 1: suggestions for each OEM number
+    for num in oem_numbers[:6]:
+        try:
+            r = requests.get(
+                f"https://www.motonet.fi/api/suggestions?q={urllib.parse.quote_plus(num)}",
+                headers=_MOTONET_HEADERS,
+                timeout=6,
+            )
+            if r.ok:
+                for product in r.json().get("products", []):
+                    code = product.get("id")
+                    if code and code not in code_to_info:
+                        code_to_info[code] = {"name": product.get("name", code)}
+                        all_codes.append(code)
+        except Exception:
+            pass
+
+    if not all_codes:
+        return []
+
+    # Step 2: batch pricing for all found codes
+    try:
+        r = requests.post(
+            "https://www.motonet.fi/api/pricing/prices?locale=fi",
+            json={"productCodeList": all_codes[:20]},
+            headers={**_MOTONET_HEADERS, "Content-Type": "application/json"},
+            timeout=8,
+        )
+        if not r.ok:
+            return []
+
+        results = []
+        for item in r.json():
+            code = (item.get("product") or {}).get("productCode")
+            if not code:
+                continue
+            price = (item.get("price") or {}).get("price")
+            name  = code_to_info.get(code, {}).get("name", code)
+
+            # Build direct product URL — pattern: /tuote/{slug};product={code}
+            slug = re.sub(r"[^a-zäöå0-9]+", "_", name.lower()).strip("_")
+            url  = f"https://www.motonet.fi/tuote/{slug};product={code}"
+
+            results.append({
+                "shop":     "Motonet",
+                "part":     name[:60],
+                "price":    price,
+                "currency": "EUR",
+                "url":      url,
+                "shipping": "1-3 days (FI)",
+                "note":     "" if price else "Katso sivustolta",
+            })
+        return results
+
+    except Exception:
+        return []
+
+
 _KNOWN_SHOPS = [
     {"name": "Autodoc",  "site": "autodoc.fi",  "shipping": "3-7 days",     "url_transform": "_add_autodoc_aff"},
     {"name": "Motonet",  "site": "motonet.fi",  "shipping": "1-3 days (FI)","url_transform": None},
@@ -1581,7 +1663,16 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
     try:
         results = []
 
-        # 1) Site: searches for Nordic shops — sequential, simple, no nested threads
+        # 0) Motonet — their own internal suggestion+pricing APIs
+        #    No bot blocking since these power their own site search.
+        #    Gives real prices + direct product URLs.
+        try:
+            motonet_results = _motonet_search(oem_numbers)
+            results = _merge_price_results(results, motonet_results)
+        except Exception:
+            pass
+
+        # 1) Site: searches for other Nordic shops
         if is_nordic and oem_numbers and SERPER_API_KEY:
             for shop in _KNOWN_SHOPS:
                 try:

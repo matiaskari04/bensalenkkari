@@ -1409,6 +1409,266 @@ def _motonet_search(oem_numbers: list) -> list:
         return []
 
 
+def _biltema_slug(s: str) -> str:
+    """Convert Finnish product name to Biltema URL slug."""
+    s = s.lower()
+    for fi, en in [("ä", "a"), ("ö", "o"), ("å", "a")]:
+        s = s.replace(fi, en)
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
+def _biltema_search(oem_numbers: list) -> list:
+    """
+    Biltema uses Findologic typeahead on find.biltema.com.
+    GET /v4/web/typeahead/300/fi/?query={oem}&from=0&take=10&...
+    Returns real prices + enough info to build direct product URLs.
+    """
+    if not oem_numbers:
+        return []
+
+    results = []
+    seen_ids = set()
+
+    for num in oem_numbers[:6]:
+        try:
+            r = requests.get(
+                "https://find.biltema.com/v4/web/typeahead/300/fi/",
+                params={
+                    "query": num,
+                    "from": "0",
+                    "take": "10",
+                    "IsPreferInStockAndNotPhasedOut": "true",
+                },
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "application/json",
+                    "Referer": "https://www.biltema.fi/",
+                },
+                timeout=6,
+            )
+            if not r.ok:
+                continue
+            for doc in r.json().get("documents", []):
+                article_id = doc.get("firstArticleChild", "")
+                if not article_id or article_id in seen_ids:
+                    continue
+                seen_ids.add(article_id)
+
+                name      = doc.get("name", "")
+                price_raw = doc.get("priceRaw")
+
+                # Use article number in search URL — guaranteed to return
+                # exactly this product, no path guessing needed
+                url = f"https://www.biltema.fi/fi/search?query={urllib.parse.quote_plus(article_id)}"
+
+                results.append({
+                    "shop":     "Biltema",
+                    "part":     name[:60],
+                    "price":    price_raw,
+                    "currency": "EUR",
+                    "url":      url,
+                    "shipping": "1-3 days (FI)",
+                    "note":     "" if price_raw else "Katso sivustolta",
+                })
+        except Exception:
+            pass
+
+    return results
+
+
+
+    """
+    AK24's internal WordPress AJAX search endpoint.
+    GET /?ajax=tcd&fn=search&term={oem}
+    Returns direct product page URLs + product names — no scraping needed.
+    """
+    if not oem_numbers:
+        return []
+
+    results = []
+    seen_urls = set()
+
+    for num in oem_numbers[:6]:
+        try:
+            r = requests.get(
+                f"https://www.ak24.fi/?ajax=tcd&fn=search&term={urllib.parse.quote_plus(num)}",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "application/json, text/plain, */*",
+                    "Referer": "https://www.ak24.fi/",
+                },
+                timeout=6,
+            )
+            if not r.ok:
+                continue
+            for item in r.json():
+                url   = item.get("value", "")
+                label = item.get("label", "")
+                if not url or url in seen_urls:
+                    continue
+                if "ak24.fi" not in url:
+                    continue
+                seen_urls.add(url)
+                results.append({
+                    "shop":     "AK24",
+                    "part":     label[:60],
+                    "price":    None,
+                    "currency": "EUR",
+                    "url":      url,
+                    "shipping": "3-5 days",
+                    "note":     "Katso sivustolta",
+                })
+        except Exception:
+            pass
+
+    return results
+
+
+def _ak24_search(oem_numbers: list) -> list:
+    """
+    AK24's internal WordPress AJAX search endpoint.
+    GET /?ajax=tcd&fn=search&term={oem}
+    Returns direct product page URLs + product names.
+    """
+    if not oem_numbers:
+        return []
+
+    results = []
+    seen_urls = set()
+
+    for num in oem_numbers[:6]:
+        try:
+            r = requests.get(
+                f"https://www.ak24.fi/?ajax=tcd&fn=search&term={urllib.parse.quote_plus(num)}",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "application/json, text/plain, */*",
+                    "Referer": "https://www.ak24.fi/",
+                },
+                timeout=6,
+            )
+            if not r.ok:
+                continue
+            for item in r.json():
+                url   = item.get("value", "")
+                label = item.get("label", "")
+                if not url or url in seen_urls or "ak24.fi" not in url:
+                    continue
+                seen_urls.add(url)
+                results.append({
+                    "shop": "AK24", "part": label[:60], "price": None,
+                    "currency": "EUR", "url": url,
+                    "shipping": "3-5 days", "note": "Katso sivustolta",
+                })
+        except Exception:
+            pass
+
+    return results
+
+
+def _autodoc_search(oem_numbers: list) -> list:
+    """
+    Autodoc's autocomplete/hints API.
+    GET /hints?keyword={oem}&autocompleteAlgorithmId=4&useHistory=0
+    Returns a direct OEM search page URL when the part exists.
+    Only shows Autodoc when they actually have the OEM number.
+    """
+    if not oem_numbers:
+        return []
+
+    results = []
+    seen_urls = set()
+
+    for num in oem_numbers[:6]:
+        try:
+            r = requests.get(
+                f"https://www.autodoc.fi/hints?keyword={urllib.parse.quote_plus(num)}"
+                f"&autocompleteAlgorithmId=4&useHistory=0",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "application/json, text/plain, */*",
+                    "Referer": "https://www.autodoc.fi/",
+                },
+                timeout=6,
+            )
+            if not r.ok:
+                continue
+            data = r.json()
+            if not data.get("success"):
+                continue
+            values = (data.get("hints") or {}).get("oen", {}).get("values", [])
+            for item in values:
+                url = item.get("url", "")
+                if not url or url in seen_urls:
+                    continue
+                if "autodoc.fi" not in url:
+                    continue
+                seen_urls.add(url)
+                results.append({
+                    "shop":     "Autodoc",
+                    "part":     item.get("title", num)[:60],
+                    "price":    None,
+                    "currency": "EUR",
+                    "url":      _add_autodoc_aff(url),
+                    "shipping": "3-7 days",
+                    "note":     "Katso sivustolta",
+                })
+        except Exception:
+            pass
+
+    return results
+
+
+
+    """
+    AK24's internal WordPress AJAX search endpoint.
+    GET /?ajax=tcd&fn=search&term={oem}
+    Returns direct product page URLs + product names — no scraping needed.
+    No prices in this endpoint but direct URLs are already a big win.
+    """
+    if not oem_numbers:
+        return []
+
+    results = []
+    seen_urls = set()
+
+    for num in oem_numbers[:6]:
+        try:
+            r = requests.get(
+                f"https://www.ak24.fi/?ajax=tcd&fn=search&term={urllib.parse.quote_plus(num)}",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "application/json, text/plain, */*",
+                    "Referer": "https://www.ak24.fi/",
+                },
+                timeout=6,
+            )
+            if not r.ok:
+                continue
+            for item in r.json():
+                url   = item.get("value", "")
+                label = item.get("label", "")
+                if not url or url in seen_urls:
+                    continue
+                if "ak24.fi" not in url:
+                    continue
+                seen_urls.add(url)
+                results.append({
+                    "shop":     "AK24",
+                    "part":     label[:60],
+                    "price":    None,
+                    "currency": "EUR",
+                    "url":      url,
+                    "shipping": "3-5 days",
+                    "note":     "Katso sivustolta",
+                })
+        except Exception:
+            pass
+
+    return results
+
+
+
 _KNOWN_SHOPS = [
     {"name": "Autodoc",  "site": "autodoc.fi",  "shipping": "3-7 days",     "url_transform": "_add_autodoc_aff"},
     {"name": "Motonet",  "site": "motonet.fi",  "shipping": "1-3 days (FI)","url_transform": None},
@@ -1664,12 +1924,27 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
     try:
         results = []
 
-        # 0) Motonet — their own internal suggestion+pricing APIs
-        #    No bot blocking since these power their own site search.
-        #    Gives real prices + direct product URLs.
+        # 0) Motonet — internal suggestion+pricing APIs → real prices + direct URLs
         try:
-            motonet_results = _motonet_search(oem_numbers)
-            results = _merge_price_results(results, motonet_results)
+            results = _merge_price_results(results, _motonet_search(oem_numbers))
+        except Exception:
+            pass
+
+        # 0b) AK24 — internal AJAX search → direct product URLs
+        try:
+            results = _merge_price_results(results, _ak24_search(oem_numbers))
+        except Exception:
+            pass
+
+        # 0c) Autodoc — hints API → direct OEM search URLs when part exists
+        try:
+            results = _merge_price_results(results, _autodoc_search(oem_numbers))
+        except Exception:
+            pass
+
+        # 0d) Biltema — Findologic typeahead → real prices + direct product URLs
+        try:
+            results = _merge_price_results(results, _biltema_search(oem_numbers))
         except Exception:
             pass
 

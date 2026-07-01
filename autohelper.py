@@ -1595,15 +1595,15 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
             # Search each OEM number separately — different shops stock
             # different numbers so one query rarely covers all of them.
             for num in oem_numbers[:4]:
-                q = f"{num} {make} {model}".strip()
+                q = f"{num} {base_part} {make} {model}".strip()
                 try:
-                    batch = _fetch_via_serper(q, country, [num])
+                    batch = _fetch_via_serper(q, country, [num], car=car)
                     results = _merge_price_results(results, batch)
                 except Exception:
                     pass
         else:
             q = " ".join(filter(None, [year, make, model, engine, base_part])).strip()
-            results = _fetch_via_serper(q, country, [])
+            results = _fetch_via_serper(q, country, [], car=car)
         return results
 
     # Run both in parallel — wrap each in try/except so one failure
@@ -1635,7 +1635,9 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
     return results
 
 
-def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> list[dict]:
+def _fetch_via_serper(query: str, country: str, oem_numbers: list = None, car: dict = None) -> list[dict]:
+    make  = (car or {}).get("make", "")
+    model = (car or {}).get("model", "")
     """Serper Shopping search — used for eBay/Amazon discovery."""
     _, currency, hl = COUNTRY_GOOGLE.get(country.upper(), ("google.com", "EUR", "en"))
     gl_code = country.lower() if country.upper() in COUNTRY_GOOGLE else "fi"
@@ -1672,7 +1674,16 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 except Exception:
                     pass
 
-            raw_url = item.get("productLink") or item.get("link") or item.get("url") or "#"
+            # Prefer direct product link; fall back to productId-based Google Shopping
+            # comparison URL (always works and shows all sellers with prices);
+            # finally fall back to the raw link for _clean_shop_url to decode.
+            product_id = item.get("productId")
+            if item.get("productLink"):
+                raw_url = item["productLink"]
+            elif product_id:
+                raw_url = f"https://www.google.com/shopping/product/{product_id}"
+            else:
+                raw_url = item.get("link") or item.get("url") or "#"
             item_url = _clean_shop_url(raw_url, source)
             if item_url is None:
                 oem_q = urllib.parse.quote_plus(oem_numbers[0]) if oem_numbers else urllib.parse.quote_plus(query)
@@ -1693,17 +1704,32 @@ def _fetch_via_serper(query: str, country: str, oem_numbers: list = None) -> lis
                 else:
                     continue  # can't build a sensible fallback — skip this result
 
+            title = item.get("title", "")
+
+            # Skip if title explicitly names a different car make —
+            # strong signal it's a wrong-car cross-reference listing.
+            if make:
+                other_makes = [m for m in [
+                    "honda","ford","opel","vauxhall","renault","peugeot",
+                    "citroen","fiat","seat","hyundai","kia","mazda","bmw",
+                    "mercedes","audi","nissan","toyota","mitsubishi","subaru",
+                    "suzuki","volvo","jaguar","alfa romeo","dacia","mini",
+                    "chrysler","dodge","jeep","acura","infiniti","dunlop",
+                ] if m not in make.lower() and m not in model.lower()]
+                if any(m in title.lower() for m in other_makes):
+                    continue
+
             results.append({
                 "shop": source,
-                "part": item.get("title", "")[:60],
+                "part": title[:60],
                 "price": price_num,
                 "currency": currency,
                 "url": item_url,
                 "shipping": _parse_shipping(item),
                 "note": "" if price_num else "See site",
             })
-
-        return results
+            if len(results) >= 8:
+                break
     except Exception:
         return []
 

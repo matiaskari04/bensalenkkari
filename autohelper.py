@@ -1389,11 +1389,10 @@ def _motonet_search(oem_numbers: list) -> list:
             price = (item.get("price") or {}).get("price")
             name  = code_to_info.get(code, {}).get("name", code)
 
-            # Build direct product URL — pattern: /tuote/{slug};product={code}
-            # Preserve hyphens (part of product codes like "18-3995"),
-            # replace spaces and other chars with underscores.
-            slug = re.sub(r"[^a-zäöå0-9\-]+", "_", name.lower()).strip("_")
-            url  = f"https://www.motonet.fi/tuote/{slug};product={code}"
+            # Build direct product URL — pattern: /tuote/{slug}?product={code}
+            # Spaces → hyphens, preserve existing hyphens, product param uses ?
+            slug = re.sub(r"[^a-zäöå0-9\-]+", "-", name.lower()).strip("-")
+            url  = f"https://www.motonet.fi/tuote/{slug}?product={code}"
 
             results.append({
                 "shop":     "Motonet",

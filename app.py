@@ -153,6 +153,32 @@ def api_prices():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/prices-test", methods=["GET"])
+def api_prices_test():
+    """Debug: call fetch_prices directly and show full result + traceback"""
+    import traceback as _tb
+    car = {"make": "Skoda", "model": "Octavia", "year": "2010", "engine": "1.9 TDI"}
+    part_info = {
+        "canonical_name": "Lower Ball Joint",
+        "part_numbers": [{"number": "4835709", "brand": "Delphi", "type": "Aftermarket"}],
+        "search_keywords": "4835709"
+    }
+    try:
+        result = fetch_prices("lower ball joint", car, "FI", part_info=part_info)
+        return jsonify({
+            "ok": True,
+            "count": len(result),
+            "items": result,
+            "serper_key_set": bool(os.environ.get("SERPER_API_KEY"))
+        })
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "type": type(e).__name__,
+            "traceback": _tb.format_exc()
+        })
+
 @app.route("/api/serper-test", methods=["GET"])
 def api_serper_test():
     """Quick raw Serper test — GET /api/serper-test?q=4835709+Skoda+Octavia"""

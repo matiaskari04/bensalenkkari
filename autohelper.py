@@ -1578,61 +1578,39 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
 
     print(f"  {Fore.GREEN}✓ Price search — {len(oem_numbers)} OEM numbers, part: {base_part[:40]}{Style.RESET_ALL}")
 
-    results = []
-
-    import concurrent.futures
-
-    def run_shop_search():
-        if is_nordic and oem_numbers:
-            return _site_search_all_shops(oem_numbers, country)
-        return []
-
-    def run_serper_shopping():
-        if not SERPER_API_KEY:
-            return []
+    try:
         results = []
-        if oem_numbers:
-            # Search each OEM number separately — different shops stock
-            # different numbers so one query rarely covers all of them.
-            for num in oem_numbers[:4]:
-                q = f"{num} {base_part} {make} {model}".strip()
+
+        # 1) Site: searches for Nordic shops — sequential, simple, no nested threads
+        if is_nordic and oem_numbers and SERPER_API_KEY:
+            for shop in _KNOWN_SHOPS:
                 try:
-                    batch = _fetch_via_serper(q, country, [num], car=car)
+                    shop_res = _site_search_one_shop(shop, oem_numbers, country)
+                    results = _merge_price_results(results, shop_res)
+                except Exception:
+                    pass
+
+        # 2) Serper Shopping — one query per OEM number (up to 3)
+        if SERPER_API_KEY:
+            for num in (oem_numbers[:3] if oem_numbers else [""]):
+                try:
+                    q = f"{num} {base_part} {make} {model}".strip() if num else \
+                        " ".join(filter(None, [year, make, model, base_part])).strip()
+                    batch = _fetch_via_serper(q, country, [num] if num else [], car=car)
                     results = _merge_price_results(results, batch)
                 except Exception:
                     pass
-        else:
-            q = " ".join(filter(None, [year, make, model, engine, base_part])).strip()
-            results = _fetch_via_serper(q, country, [], car=car)
+
+        if not results:
+            fallback_query = f"{year} {make} {model} {base_part}".strip()
+            return _fetch_fallback_links(fallback_query, country, oem_numbers)
+
         return results
 
-    # Run both in parallel — wrap each in try/except so one failure
-    # never silently kills the other or crashes the whole function.
-    shop_results   = []
-    serper_results = []
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-        shop_fut   = ex.submit(run_shop_search)
-        serper_fut = ex.submit(run_serper_shopping)
-        try:
-            shop_results   = shop_fut.result(timeout=22)
-        except Exception as e:
-            print(f"  [site-search error] {e}")
-        try:
-            serper_results = serper_fut.result(timeout=15)
-        except Exception as e:
-            print(f"  [serper error] {e}")
-
-    # Include ALL Serper Shopping results — not just eBay/Amazon.
-    # Serper Shopping often surfaces Finnish shop results directly.
-    # Site: search results supplement with verified direct product URLs.
-    results = _merge_price_results(serper_results, shop_results)  # Shopping first → prices win on dedup
-
-    if not results:
+    except Exception as e:
+        print(f"  [fetch_prices error] {e}")
         fallback_query = f"{year} {make} {model} {base_part}".strip()
         return _fetch_fallback_links(fallback_query, country, oem_numbers)
-
-    return results
 
 
 def _fetch_via_serper(query: str, country: str, oem_numbers: list = None, car: dict = None) -> list[dict]:

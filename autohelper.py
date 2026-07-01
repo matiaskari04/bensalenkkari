@@ -1476,7 +1476,7 @@ def _biltema_search(oem_numbers: list) -> list:
     return results
 
 
-
+def _ak24_search(oem_numbers: list) -> list:
     """
     AK24's internal WordPress AJAX search endpoint.
     GET /?ajax=tcd&fn=search&term={oem}
@@ -1524,7 +1524,64 @@ def _biltema_search(oem_numbers: list) -> list:
     return results
 
 
-def _ak24_search(oem_numbers: list) -> list:
+def _alvadi_search(oem_numbers: list) -> list:
+    """
+    ALVADI's autocomplete API.
+    GET /spares?code={oem}
+    Returns HTML with direct product URL embedded, plus match count.
+    Only shows ALVADI when they actually have the part (match > 0).
+    """
+    if not oem_numbers:
+        return []
+
+    results = []
+    seen_urls = set()
+
+    for num in oem_numbers[:6]:
+        try:
+            r = requests.get(
+                f"https://alvadi.fi/spares?code={urllib.parse.quote_plus(num)}",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "application/json, text/plain, */*",
+                    "Referer": "https://alvadi.fi/",
+                },
+                timeout=6,
+            )
+            if not r.ok:
+                continue
+            data = r.json()
+            if not data.get("match"):
+                continue
+            # Extract product URL from embedded HTML
+            html = data.get("html", "")
+            url_match = re.search(r'href="(/fi/[^"]+)"', html)
+            if not url_match:
+                continue
+            url = "https://alvadi.fi" + url_match.group(1).replace("\\/", "/")
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            # Extract product name
+            name_match = re.search(r'class="name">(.*?)</span>', html, re.DOTALL)
+            name = re.sub(r"<[^>]+>", "", name_match.group(1)).strip() if name_match else num
+
+            results.append({
+                "shop":     "ALVADI",
+                "part":     name[:60],
+                "price":    None,
+                "currency": "EUR",
+                "url":      url,
+                "shipping": "2-4 days (EE→FI)",
+                "note":     "Katso sivustolta",
+            })
+        except Exception:
+            pass
+
+    return results
+
+
+
     """
     AK24's internal WordPress AJAX search endpoint.
     GET /?ajax=tcd&fn=search&term={oem}
@@ -1945,6 +2002,12 @@ def fetch_prices(part: str, car: dict, country: str, part_info: dict = None) -> 
         # 0d) Biltema — Findologic typeahead → real prices + direct product URLs
         try:
             results = _merge_price_results(results, _biltema_search(oem_numbers))
+        except Exception:
+            pass
+
+        # 0e) ALVADI — autocomplete API → direct product URLs when part exists
+        try:
+            results = _merge_price_results(results, _alvadi_search(oem_numbers))
         except Exception:
             pass
 
